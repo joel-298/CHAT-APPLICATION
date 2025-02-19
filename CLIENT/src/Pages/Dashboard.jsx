@@ -140,7 +140,7 @@ const Dashboard = () => {
           if(response.data.boolean) {
             console.log(response.data.array) ; 
             setChatsArray(response.data.array) ; 
-            setServerError(response.data.message) ; 
+            setServerError(response.data.message) ; // this useState is for displaying like No chats present here !
           }
           else{
             alert(response.data.message) ; 

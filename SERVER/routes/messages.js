@@ -6,14 +6,17 @@ const message = express.Router() ;
 
 
 
+
 // CHATS : 
 message.post("/get", protectedRoute ,async (req,res)=>{ // PROTECTED ROUTE ELSE RETURN TO AUTH PAGE
     const {user_id,friend_id} = req.body ; 
     
     console.log(friend_id ," ", user_id) ;
+    // Convert IDs to ObjectId to match MongoDB format
+
     try {
-        let chatID = {};
-        chatId = await chatModel.findOne({participants : {$all: [user_id,friend_id] , $size: 2}}) ;
+        // let chatID = {};
+        let chatId = await chatModel.findOne({participants : {$all: [user_id,friend_id]}}) ; // this is not working correctly 
         console.log(chatId) ; 
         if(!chatId) {
             res.json({boolean : true , message: "No chats present here !" , array : []}) ; 
@@ -22,6 +25,7 @@ message.post("/get", protectedRoute ,async (req,res)=>{ // PROTECTED ROUTE ELSE 
             // find messages array 
             try {
                 let array = await messageModel.find({chatId : chatId}) ; 
+                // console.log(array) ; 
                 if(!array) {
                     res.json({boolean : true , message : "No messages present here !", array : []}) ;
                 }
@@ -41,7 +45,8 @@ message.post("/get", protectedRoute ,async (req,res)=>{ // PROTECTED ROUTE ELSE 
 });
 
 
-// HERE I HAVE WRITTEN TRUE BECAUSE IN FRONTEND IS BOOLEAN VALUE OF RESPONSE == FALSE i.e not authorized therefore return to home page
+// HERE I HAVE WRITTEN TRUE BECAUSE IN FRONTEND IF BOOLEAN VALUE OF RESPONSE == FALSE i.e not authorized because of the 
+// possibility of protected route returning false heretherefore return to home page
 
 
 module.exports = message ; 
