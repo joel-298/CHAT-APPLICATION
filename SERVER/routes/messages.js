@@ -16,7 +16,12 @@ message.post("/get", protectedRoute ,async (req,res)=>{ // PROTECTED ROUTE ELSE 
 
     try {
         // let chatID = {};
-        let chatId = await chatModel.findOne({participants : {$all: [user_id,friend_id]}}) ; // this is not working correctly 
+        let chatId = await chatModel.findOne({
+            $or: [
+                { senderId: user_id, receiverId: friend_id },
+                { senderId: friend_id, receiverId: user_id }
+            ]
+        });
         console.log(chatId) ; 
         if(!chatId) {
             res.json({boolean : true , message: "No chats present here !" , array : []}) ; 

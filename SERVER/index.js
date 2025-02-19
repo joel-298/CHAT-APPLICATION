@@ -28,10 +28,17 @@ app.use('/messages',message) ;
 const addMessageToDb = async (data) => {
     const {userdetails , friend_data , message} = data ; 
     try {
-        let chat = await chatModel.findOne({participants : {$all: [userdetails._id, friend_data._id]}}) ; // this part is not correctly working .... 
+        let chat = await chatModel.findOne({
+            $or: [
+                { senderId: userdetails._id, receiverId: friend_data._id },
+                { senderId: friend_data._id, receiverId: userdetails._id }
+            ]
+        });
+        
         if(!chat) {
             chat = await chatModel.create({
-                participants: [userdetails._id,friend_data._id] 
+                senderId : userdetails._id , 
+                receiverId : friend_data._id
             }) ; 
             console.log('New chat created:', chat._id);
         }
