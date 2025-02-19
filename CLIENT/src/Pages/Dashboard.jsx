@@ -46,7 +46,14 @@ const Dashboard = () => {
           socket.on("receive_messages", (data) => {
             console.log(`FROM : ${data.userdetails.name} & its id : ${data.userdetails._id}, SOCKET ID :${data.friendSocketId} , Message : ${data.message}`);
             // in here if data.userdetails._id == friend_data._id then append that message to chat array
-
+            if(data.userdetails._id == friendIdRef.current) {
+              setChatsArray((chats)=>[...chats,{
+                senderId : data.userdetails._id ,
+                text : data.message , 
+                createdAt : Date.now() 
+              }]);
+            }
+            
           });
         }
         else{
@@ -166,6 +173,11 @@ const Dashboard = () => {
     e.preventDefault() ; 
     console.log(`TO : ${friendSocketId} , FRIEND ID : ${friend_data._id}: message : ${message} `) ; 
     // append it to chat array too .... 
+    setChatsArray((chats)=>[...chats,{
+      senderId : userdetails._id ,
+      text : message , 
+      createdAt : Date.now() 
+    }]);
     socket.emit("message",{friendSocketId,friend_data,message,userdetails}) ; 
     setMessage("") ; 
   };
