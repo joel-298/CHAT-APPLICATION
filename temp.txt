@@ -1,0 +1,58 @@
+// CHECK POINT 1
+// PREVIOUS CODE : 
+socket.on("connect" , () => {
+  console.log("Connected:", socket.id);
+  socket.emit("user_online",response.data._id) ; 
+});
+socket.on("update_users", (users) => {
+  setOnlineUsers(users);
+});
+// NEW CODE : 
+// 1) Emit only after token verification
+socket.emit("user_online", response.data._id);
+
+// 2) SOCKET CONNECTION : 
+socket.on("connect", () => {
+  console.log("Connected:", socket.id);
+});
+// 3) LISTEN FOR ALL USERS : Login and Logout
+socket.on("update_users", (users) => {
+  setOnlineUsers(users);
+});
+
+PROLEM STATEMENT :
+When refreshed the page the connection is build but emit function was not triggered which result in not putting the new entry of user_id:socket_id in online users array 
+present in the server !
+SOLUTION : We'll synchronize the verifyToken call before attaching the connect listener.
+The socket is indeed reconnecting with a new socket.id after refresh, but the user_online event isn't firing as expected. 
+The issue might be due to the asynchronous verifyToken logic running after the socket has already connected.
+
+Problem:
+1) The connect event fires immediately when the socket connects.
+2) At that time response.data._id doesn't exist yet because the token verification is still in progress.
+3) So socket.emit() sends undefined as the user ID.
+4) Result: User doesn't appear in userMap.
+SOLUTION : Why It Works:
+1) Token verification completes first → response.data._id is available.
+2) socket.emit() is called immediately after verification.
+3) Socket.IO buffers the user_online event because the connection isn't fully established yet.
+4) Once the socket connects, the buffered event is delivered to the server with the correct userID.
+
+
+
+CHECKPOINT 2 : 
+  // PROBLEM : FRIEND_DATA._id was returning null because its useState was not being updated before sockect."update_users" event 
+
+
+CHECKPOINT 3 :
+Handeling chats array and inbox 
+
+CHECKPOINT 4 : 
+Handelilng requests 
+
+CHECKPOINT 5 : 
+SEARCH BAR
+
+
+CHECKPOINT 6 : 
+USEMEMO 
