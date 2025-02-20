@@ -87,7 +87,11 @@ p , button {
   text-align: center;
   align-items: center;
 }
-
+.Logout {
+  /* background-color: blue; */
+  height: fit-content;
+  margin: auto;
+}
 .searchbar {
   background-color: rgb(74, 74, 74);
   display: flex;
@@ -130,6 +134,29 @@ p , button {
   column-gap: 10px;
   padding: 0px 10px;
 }
+.result .people {
+  display: flex;
+  flex-direction: column; 
+}
+.people .user-card {
+  justify-content: space-between;
+}
+.people .popup {
+  font-size: 17px;
+  background-color: rgb(63, 63, 65);
+  display: flex;
+  align-items: center;
+  height: fit-content;
+  padding: 0px 10px;
+  border-bottom-right-radius: 10px ;
+  border-bottom-left-radius: 10px;
+}
+.popup button {
+  background-color: #202020;
+  height: fit-content;
+  width: fit-content;
+  font-size: 15px;
+}
 .result .user-card:hover {
   cursor: pointer ;
   background-color: grey;
@@ -155,6 +182,19 @@ p , button {
 .display_none {
   display: none; 
 }
+
+.box1, .box2 {
+  /* background-color: blue; */
+  display: flex;
+  justify-content: center;
+  column-gap: 10px;
+}
+.box1 {
+  width: 100%;
+}
+
+
+
 .status {
   /* background-color: lime; */
   background-color: transparent;

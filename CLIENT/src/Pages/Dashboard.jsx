@@ -4,17 +4,25 @@ import {io} from "socket.io-client"
 import { useNavigate } from 'react-router-dom';
 
 // CHECK POINT 1 : CONTACTS
-// const functionContacts = async (id) => {
-//   try {
-//     console.log(id) ; 
-//     const response = await axios.post(`http://localhost:4000/user/contacts`, {id:id} ,{withCredentials:true}) ; 
-//     if(response.data.boolean) {
-//       setUserContacts(response.data.array);
-//     }
-//   } catch (error) {
-//     console.log("ERROR WHILE FETCHING USER CONTACTS !") ; 
-//   }
-// };
+const functionContacts = async (id) => {
+  try {
+    console.log("User contacts Id",id) ; 
+    const response = await axios.get(`http://localhost:4000/user/contacts`,{withCredentials:true}) ; 
+    if(response.data.boolean) {
+      setUserContacts(response.data.contacts);
+      console.log("User contacts array",response.data.contacts) ; 
+      setRequestQueue(response.data.requestedQueue) ; 
+      console.log("User requestedQueue ",response.data.requestedQueue) ; 
+      setBlockedQueue(response.data.blockedQueue) ; 
+      console.log("User Blocked Queue ", response.data.blockedQueue) ; 
+    }
+    else{
+      console.log("User array return false") ;
+    }
+  } catch (error) {
+    console.log("ERROR WHILE FETCHING USER CONTACTS !") ; 
+  }
+};
 
 
 const Dashboard = () => {
@@ -27,7 +35,7 @@ const Dashboard = () => {
         const response = await axios.get("http://localhost:4000/user/personal" , {withCredentials : true}) ; 
         if(response.data.boolean) { //  logged in 
           setUserDetails(response.data.user) ; 
-          // functionContacts(response.data.user._id) ; // CHECK POINT 4 : CONTACTS 
+          functionContacts(response.data.user._id) ; // CHECK POINT 4 : CONTACTS 
           // 1) Emit only after token verification
           socket.emit("user_online", response.data.user._id);       // CHECK POINT 1
           // 2) SOCKET CONNECTION : 
@@ -70,11 +78,14 @@ const Dashboard = () => {
   },[socket]);
 
   // SEARCH
-  const [userdetails,setUserDetails] = useState({}) ;        // USER DETAILS
-  const [userContacts,setUserContacts] = useState([]) ;      // USER CONTACTS ; 
-  const [search_input,setSearchInput] = useState('') ;       // SEARCH INPUT
-  const [usersArray,setUsersArray] = useState([]) ;          // search input user Array
-  const [onlineUsers, setOnlineUsers] = useState({});        // userSocketMap : initially empty
+  const [userdetails,setUserDetails] = useState({}) ;           // USER DETAILS
+  const [userContacts,setUserContacts] = useState([]) ;         // USER CONTACTS ; 
+  const [userRequestedQueue,setRequestQueue] = useState([]) ;   // USER REQUESTED ARRAY
+  const [blockedQueue,setBlockedQueue] = useState([]) ;         // USER BLOCKED ARRAY
+  const [blockId ,setBlockId] = useState("")                    // Selected Id for blocking user 
+  const [search_input,setSearchInput] = useState('') ;          // SEARCH INPUT
+  const [usersArray,setUsersArray] = useState([]) ;             // search input user Array
+  const [onlineUsers, setOnlineUsers] = useState({});           // userSocketMap : initially empty
   const [serverErrorLoadingChats,setServerError] = useState("") ; 
   const latestQuery = useRef('');
   let searchTimeout;
@@ -182,10 +193,23 @@ const Dashboard = () => {
     setMessage("") ; 
   };
 
+  // CONNECTIONS : 
+  const handleBlock = (id) => {
+    setBlockId(id) ; 
+  }
+  const handleBlockYes = () => {
+    console.log("ID FOR BLOCKING : ", blockId) ; 
+
+    setBlockId("") ; 
+  }
+  const handleBlockNo = () => {
+    console.log("ID FOR NOT BLOCKING : ", blockId); 
+    setBlockId("") ; 
+  }
+
   return (
     <>
     <div className='profile'>
-      <button onClick={handleLogout}>LOGOUT</button>
       <img src={userdetails.image} alt="avatar" />
       <p>{userdetails.name}</p>
       <p>
@@ -200,6 +224,7 @@ const Dashboard = () => {
             })
           : 'Loading...'}
       </p>
+      <button onClick={handleLogout} className='Logout'>LOGOUT</button>
     </div>
     <br />
     <div className='searchbar'>
@@ -210,12 +235,34 @@ const Dashboard = () => {
             <div className='result'>
               {usersArray.length > 0 ? (
                   usersArray.map((ele) => (
-                      <div key={ele._id} className='user-card' onClick={()=>{handleFriendData(ele._id)}} >
-                          <img src={ele.image} alt='User Avatar' />
-                          <p>{ele.name}</p>
-                          <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
-                         {/* this means also assign another class , 
-                          we can assign 2 classes like this className="status online_status" */}
+                      <div key={ele._id} className={`people ${blockedQueue[ele._id] ? 'display_none' : ''}`}>
+                        <div className='user-card'> 
+                          <div onClick={()=>{handleFriendData(ele._id)}} className='box1'>
+                            <img src={ele.image} alt='User Avatar' />
+                            <p>{ele.name}</p>
+                            <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
+                          </div>
+                          {/* this means also assign another class , 
+                            we can assign 2 classes like this className="status online_status" */}
+                          <div className='box2'>
+                            <button className={`Connect ${ele._id == userdetails._id ? 'display_none' : ''} ${userRequestedQueue[ele._id] ? 'display_none':''}`}>Connect</button>
+                            <button className={`Requested ${ele._id == userdetails._id ? 'display_none' : ''} ${userRequestedQueue[ele._id] ? '':'display_none'}`}>Requested</button>
+                            <button className={`Blockbutton ${ele._id == userdetails._id ? 'display_none' : ''}`} onClick={()=>handleBlock(ele._id)}>
+                              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-ban" viewBox="0 0 16 16">
+                                <path d="M15 8a6.97 6.97 0 0 0-1.71-4.584l-9.874 9.875A7 7 0 0 0 15 8M2.71 12.584l9.874-9.875a7 7 0 0 0-9.874 9.874ZM16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0"/>
+                              </svg>
+                            </button>
+                          </div>
+                          </div>
+                          <div  className={`${
+                              blockId === "" || ele._id === userdetails._id || (ele._id !== blockId && blockId !== "")
+                                ? "display_none"
+                                : "popup"
+                            }`}>
+                            <p>Are u sure u want to block this {ele.name} account ? </p>&nbsp;
+                            <button onClick={handleBlockYes}>Yes</button>&nbsp;
+                            <button onClick={handleBlockNo}>No</button>
+                          </div>
                       </div>
                   ))
               ) : (
@@ -228,7 +275,7 @@ const Dashboard = () => {
       <div className='array_div'>
         {userContacts.length > 0 ? (
           userContacts.map((ele) => (
-              <div key={ele._id} className='user-card' onClick={()=>{handleFriendData(ele._id)}} >
+              <div key={ele._id} className={`user-card ${blockedQueue[ele._id] ? 'display_none' : ''}`} onClick={()=>{handleFriendData(ele._id)}} >
                   <img src={ele.image} alt='User Avatar' />
                   <p>{ele.name}</p>
                   <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
