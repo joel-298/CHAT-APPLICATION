@@ -8,17 +8,25 @@ const friendsSchema = mongoose.Schema({
     } , 
     // one-to-many relationship
     contacts:[{
-        type : mongoose.Schema.Types.ObjectId,   // Each objectId is unique identifier for a document in another collection
-        ref:"users"}]                           // ref : tells mongoose that objectId values refers to documents in user collection
+        type : mongoose.Schema.Types.ObjectId,   
+        ref:"users"}]
     ,
-    requestedQueue:[{
+    SentRequest:[{
         type : mongoose.Schema.Types.ObjectId , 
         ref : "users"
     }],
-    blockedQueue:[{
+    ReceiveRequest : [{
+        type : mongoose.Schema.Types.ObjectId , 
+        ref : "users"
+    }],
+    BlockedContacts:[{
         type : mongoose.Schema.Types.ObjectId , 
         ref : "users" 
     }],
+    BlockedBy : [{
+        type: mongoose.Schema.Types.ObjectId , 
+        ref : "users" 
+    }]
 });
 
 const friendsModel = mongoose.model("friends",friendsSchema);

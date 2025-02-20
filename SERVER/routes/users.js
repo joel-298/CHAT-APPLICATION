@@ -26,27 +26,57 @@ user.get('/personal', protectedRoute , async (req,res) => { // PROTECTED ROUTE E
     return res.json({boolean : true , message : "Authorized ", user : user}) ; 
 });
 
-// FRIENDS OF USERS IN DAHBOARD  
+// USER CONTACTS 
 user.get("/contacts" , protectedRoute  , async (req,res) => { // PROTECTED ROUTE ELSE RETURN TO AUTH PAGE 
     const id = req.user._id ; 
     console.log("USER CONTACTS ID",id) ; 
     try {
-        const user = friendsModel.find({user_id : id}) ;
-        console.log(user.contacts) ;  
-        console.log(user.requestedQueue) ; 
-        console.log(user.blockedQueue) ; 
-        if(user) {
-            return res.json({boolean : true , contacts : user.contacts , requestedQueue : user.requestedQueue , blockedQueue : user.blockedQueue }) ; 
+        const friendData = await friendsModel
+          .findOne({ user_id: id })
+          .populate('contacts', "name image email")
+          .populate('SentRequest', "name image email")
+          .populate('ReceiveRequest', "name image email")
+          .populate('BlockedContacts', "name image email")
+          .populate('BlockedBy', "name image email");
+    
+        if (friendData) {
+          return res.json({
+            boolean: true,
+            contacts: friendData.contacts,
+            SentRequest: friendData.SentRequest,
+            ReceiveRequest: friendData.ReceiveRequest,
+            BlockedContacts: friendData.BlockedContacts,
+            BlockedBy: friendData.BlockedBy
+          });
+        } else {
+          return res.json({
+            boolean: true,
+            message: "Array of contacts not found",
+            contacts: [],
+            SentRequest: [],
+            ReceiveRequest: [],
+            BlockedContacts: [],
+            BlockedBy: []
+          });
         }
-        else{
-            return res.json({boolean : false , message : "Array of contacts not found" , contacts : [] , requestedQueue : [] , blockedQueue : []}) ; 
-        }
-    } catch (error) {
-        console.log(error) ;
-        return res.json({boolean : false , message : "Internal Server Error" , contacts : [] , requestedQueue : [] , blockedQueue : []}) ; 
-    }
+      } catch (error) {
+        console.log(error);
+        return res.json({
+          boolean: true,
+          message: "Internal Server Error",
+          contacts: [],
+          SentRequest: [],
+          ReceiveRequest: [],
+          BlockedContacts: [],
+          BlockedBy: []
+        });
+      }
 });
 
 
-
 module.exports = user ; 
+
+
+
+// POPULATE METHOD IN MONGO DB ACTS AS SQL JOIN REDUCING DATA DUBLICATION
+// By default, Mongoose includes the _id field when you populate, even if you don’t explicitly list it

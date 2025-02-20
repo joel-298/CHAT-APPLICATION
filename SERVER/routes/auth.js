@@ -2,6 +2,7 @@ const express = require("express") ;
 const jwt = require("jsonwebtoken") ; 
 const bcrypt = require("bcryptjs") ; 
 const userModel = require("../models/userModel");
+const friendsModel = require("../models/friendsModel");
 const auth = express.Router() ; 
 
 // SIGNUP
@@ -17,7 +18,12 @@ auth.post('/signup', async (req , res) => {
             email: email ,
             password : newpass
         }) ; 
+        const friendTable = await friendsModel.create({
+            user_id : result._id , 
+            contacts : [result._id] // and a person to itself contact !
+        })
         result.save() ; 
+        friendTable.save() ; 
         res.status(201)  ;
         res.json({
             boolean:true,

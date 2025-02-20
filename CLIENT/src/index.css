@@ -179,9 +179,7 @@ p , button {
   text-align: center;
   justify-content: center;
 }
-.display_none {
-  display: none; 
-}
+
 
 .box1, .box2 {
   /* background-color: blue; */
@@ -191,9 +189,14 @@ p , button {
 }
 .box1 {
   width: 100%;
+  align-items: center;
 }
 
-
+.contacts_section {
+  background-color: rgb(49, 49, 49);
+  border-radius: 10px;
+  margin: 5px;
+}
 
 .status {
   /* background-color: lime; */
@@ -327,4 +330,9 @@ p , button {
   background-color: rgb(20, 20, 21);
   border-bottom-right-radius: 10px;
   border-bottom-left-radius: 10px;
+}
+
+
+.display_none {
+  display: none; 
 }
