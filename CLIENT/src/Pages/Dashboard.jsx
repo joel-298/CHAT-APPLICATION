@@ -8,6 +8,30 @@ import { useNavigate } from 'react-router-dom';
 
 
 const Dashboard = () => {
+  // CONTACTS !
+  const functionContacts = async (id) => {
+    try {
+      console.log("User contacts Id",id) ; 
+      const response = await axios.get(`http://localhost:4000/user/contacts`,{withCredentials:true}) ; 
+      if(response.data.boolean) {
+        setUserContacts(response.data.contacts) ;
+        // HERE WE WILL FETCH USER CONTACTS LIKE ABOVE : 
+        // USER SEND REQUESTED LIST , USER RECEIVE REQUEST LIST , USER BLOCK LIST , USER BLOCK BY LIST 
+        setSentRequest(response.data.SentRequest) ;
+        setReceiveRequest(response.data.ReceiveRequest) ; 
+        // console.log("User requestedQueue ",response.data.requestedQueue) ; 
+        // setBlockedContacts(response.data.BlockedContacts) ; 
+        // console.log("User Blocked Queue ", response.data.BlockedContacts) ; 
+      }
+      else{
+        console.log("User array return false") ;
+      }
+    } catch (error) {
+      navigate('/') ;
+      console.log("ERROR WHILE FETCHING USER CONTACTS !") ; 
+    }
+  };
+
   // CONNECT 
   const navigate = useNavigate() ; 
   const socket = useMemo(()=> io("http://localhost:4000"),[]) ; // setting up the socket server // CHECKPOINT 6
@@ -17,34 +41,13 @@ const Dashboard = () => {
         const response = await axios.get("http://localhost:4000/user/personal" , {withCredentials : true}) ; 
         if(response.data.boolean) { //  logged in 
           setUserDetails(response.data.user) ; 
-          const functionContacts = async (id) => {
-            try {
-              console.log("User contacts Id",id) ; 
-              const response = await axios.get(`http://localhost:4000/user/contacts`,{withCredentials:true}) ; 
-              if(response.data.boolean) {
-                setUserContacts(response.data.contacts);
-                console.log("User contacts array",response.data.contacts) ; 
-                // HERE WE WILL FETCH USER CONTACTS LIKE ABOVE : 
-                // USER SEND REQUESTED LIST , USER RECEIVE REQUEST LIST , USER BLOCK LIST , USER BLOCK BY LIST 
-                // setSentRequest(response.data.requestedQueue) ; 
-                // console.log("User requestedQueue ",response.data.requestedQueue) ; 
-                // setBlockedContacts(response.data.BlockedContacts) ; 
-                // console.log("User Blocked Queue ", response.data.BlockedContacts) ; 
-              }
-              else{
-                console.log("User array return false") ;
-              }
-            } catch (error) {
-              navigate('/') ;
-              console.log("ERROR WHILE FETCHING USER CONTACTS !") ; 
-            }
-          };
           functionContacts(response.data.user._id) ; // CHECK POINT 4 : CONTACTS 
           // 1) Emit only after token verification
           socket.emit("user_online", response.data.user._id);       // CHECK POINT 1
+          setMySocketId(socket.id) ; 
           // 2) SOCKET CONNECTION : 
           socket.on("connect", () => {
-            console.log("Connected:", socket.id);
+            setMySocketId(socket.id) ; 
           });
           // 3) LISTEN FOR ALL USERS : Login and Logout
           socket.on("update_users", (users) => {
@@ -65,8 +68,16 @@ const Dashboard = () => {
                 createdAt : Date.now() 
               }]);
             }
-            
           });
+          // 5) SEND REQUEST 
+          socket.on("send_request", (data) => {
+            console.log("Send request data",data) ; 
+            setSentRequest(data); // not here when im printing this array of sentRequest im just seeing map and rest values of ele.name , ele.image is not being seen and same as below this function
+          });
+          socket.on("receive_request", (data) => {
+            console.log("receive request data",data) // same as above
+            setReceiveRequest(data) ;             
+          })
         }
         else{
           navigate('/') ;
@@ -78,10 +89,12 @@ const Dashboard = () => {
     }
     return () => {
       socket.disconnect() ; 
+      setMySocketId("") ; 
     }
   },[socket]);
 
   // SEARCH
+  const [MySocketId,setMySocketId] = useState("") ;             // USER SOCKET ID : 
   const [userdetails,setUserDetails] = useState({}) ;           // USER DETAILS
   const [search_input,setSearchInput] = useState('') ;          // SEARCH INPUT
   const [usersArray,setUsersArray] = useState([]) ;             // search input user Array
@@ -116,6 +129,7 @@ const Dashboard = () => {
     try {
       const response = await axios.get('http://localhost:4000/auth/logout' , {withCredentials : true}) ; 
       if(response.data.boolean) {
+        setMySocketId("") ;
         alert(response.data.message) ; 
         navigate('/') ; 
       }
@@ -201,12 +215,15 @@ const Dashboard = () => {
 
   // CONNECTIONS : 
   const [userContacts,setUserContacts] = useState([]) ;         // USER CONTACTS ; 
+  {/* IF these useStates were only Array then we could have accessed these as {var[ele._id] ? "display_none" : ''} in css 
+    But since they are array of objects therefore we are going with this syntax : 
+    SentRequest.some(req => req._id === ele._id) */}
   const [SentRequest,setSentRequest] = useState([]) ;          // USER SENT CONNECTION REQUEST ARRAY
   const [ReceiveRequest,setReceiveRequest] = useState([]) // user receiving request array 
   const [BlockedContacts,setBlockedContacts] = useState([]) ;   // USER HAS BLOCKED THESE CONTACTS ARRAY
   const [BlockedBy,setBlockedBy] = useState([]) ;     // user has been blocked by these people
   const [blockId ,setBlockId] = useState("")                    // Selected Id for blocking user 
-  // Block someone
+  // BLOCK 
     const handleBlock = (id) => {
       setBlockId(id) ; 
     }
@@ -226,28 +243,22 @@ const Dashboard = () => {
       console.log("ID FOR NOT BLOCKING : ", blockId); 
       setBlockId("") ; 
     }
-  // unblock 
+  // UNBLOCK 
     const handleUnblock = (id) => { // receive id of that user
       console.log("ID FOR UNBLOCKING : ", id) ; 
       // use socket io
     } 
-  // connect
+  // SEND REQUEST
     const Request = (id) => { // receive id of that user
       console.log("CONNECTION REQUEST TO : ", id) ; 
       // 1st add in array above 
       // use socket io to send req. in backend real time 
       // receive in backend and update this user sentRequest array in backend and other person receiveRequest
       // emit from backend and receive in useEffect and update receive request array
+      socket.emit("addRequest",{friend_id : id , user_id : userdetails._id , userSocketId : MySocketId , friendSocketId :  onlineUsers[id] || null }) ;  
+      // here online users is a map of key value paris of user_id and their socket id thereofre if friend id is present in map return the socket value in her as a value else make the value ""
     }
-  // cancel Request 
-    const cancelRequest = (id) => { // receive id of that user 
-      console.log("CANCEL REQUEST TO : ", id) ; 
-      // 1st remove from request array above
-      // use socket io to send req.in backend real time 
-      // receive in backend and update this user sendRequest array in backend and other person receiveRequest 
-      // emit from backend and receive in useEffect and update receive request array 
-    }
-  // accept request
+  // ACCEPT
     const Accept = (id) => { // receive id of that user
       console.log("ACCEPTING REQUEST TO : ", id) ; 
       // io.emit id of that user 
@@ -257,9 +268,25 @@ const Dashboard = () => {
       //        remove user from persons sent request array
       // emit from backend these updated array : contacts , sentRequest , receive request 
       // update these three arrays in frontend
+      socket.emit("Accept", {friend_id : id , user_id : userdetails._id , userSocketId : MySocketId , friendSocketId : onlineUsers[id] || null })
+      // here online users is a map of key value paris of user_id and their socket id thereofre if friend id is present in map return the socket value in her as a value else make the value ""
     }
-  // delete chats 
-    const DelteChats = (id) => {
+  // CANCEL REQUEST
+    const cancelRequest = (id) => { // receive id of that user 
+      console.log("CANCEL REQUEST TO : ", id) ; 
+      // 1st remove from request array above
+      // use socket io to send req.in backend real time 
+      // receive in backend and update this user sendRequest array in backend and other person receiveRequest 
+      // emit from backend and receive in useEffect and update receive request array 
+    }
+  // REJECT 
+    const Reject = (id) => {
+      console.log("REJECT REQUEST : ", id); 
+      // remove from user receive request
+      // remove from other person sent request array
+    }
+  // DELETE CHATS 
+    const DeleteChats = (id) => {
       console.log("DELETING CHATS OF THIS ID : ", id) ; 
       // io. emit this command : 
       // in backend receive 
@@ -272,8 +299,10 @@ const Dashboard = () => {
   return (
     <>
     <div className='profile'>
-      <img src={userdetails.image} alt="avatar" />
+      <img src={userdetails.image} alt="avatar" onClick={()=>{navigate('/profile')}} />
+      {/* <p className='notification_counter'>1</p> */}
       <p>{userdetails.name}</p>
+      {/* <p>{MySocketId}</p> After Login : .connect id will be set AT PAGE REFRESH .emit id will set */}
       <p>
         {userdetails.createdAt
           ? new Date(userdetails.createdAt).toLocaleString('en-GB', {
@@ -307,13 +336,15 @@ const Dashboard = () => {
                           {/* this means also assign another class , 
                             we can assign 2 classes like this className="status online_status" */}
                           <div className='box2'>
-                            <button className={`Connect ${ele._id == userdetails._id ? 'display_none' : ''} ${SentRequest[ele._id] ? 'display_none':''}`} onClick={()=>Request(ele._id)}>Connect</button>
-                            <button className={`Requested ${ele._id == userdetails._id ? 'display_none' : ''} ${SentRequest[ele._id] ? '':'display_none'}`}>Requested</button>
+                            <button className={`Connect ${ele._id == userdetails._id ? 'display_none' : ''} ${SentRequest.some(req => req._id === ele._id) ? 'display_none' : ''} ${ReceiveRequest.some(req=>req._id === ele._id) ? 'display_none' : ''}`} onClick={()=>Request(ele._id)}>Connect</button> 
+                            <button className={`Requested ${ele._id == userdetails._id ? 'display_none' : ''} ${SentRequest.some(req => req._id === ele._id) ? '' : 'display_none'}`} onClick={()=>cancelRequest(ele._id)}>Requested</button>
                             <button className={`Blockbutton ${ele._id == userdetails._id ? 'display_none' : ''}`} onClick={()=>handleBlock(ele._id)}>
                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-ban" viewBox="0 0 16 16">
                                 <path d="M15 8a6.97 6.97 0 0 0-1.71-4.584l-9.874 9.875A7 7 0 0 0 15 8M2.71 12.584l9.874-9.875a7 7 0 0 0-9.874 9.874ZM16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0"/>
                               </svg>
                             </button>
+                            <button onClick={()=>{Accept(ele._id)}} className={`accept ${ReceiveRequest.some(req=> req._id === ele._id) ? '' : 'display_none'} `}>Accept</button>
+                            <button onClick={()=>{Reject(ele._id)}} className={`reject ${ReceiveRequest.some(req=> req._id === ele._id) ? '' : 'display_none'} `}>Reject</button>
                           </div>
                           </div>
                           <div  className={`${
@@ -343,10 +374,35 @@ const Dashboard = () => {
                   <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
                   {/* this means also assign another class , 
                   we can assign 2 classes like this className="status online_status" */}
+                  {/* <button onClick={()=>{DeleteChats(ele._id)}}>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16">
+                    <path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5m-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5M4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06m6.53-.528a.5.5 0 0 0-.528.47l-.5 8.5a.5.5 0 0 0 .998.058l.5-8.5a.5.5 0 0 0-.47-.528M8 4.5a.5.5 0 0 0-.5.5v8.5a.5.5 0 0 0 1 0V5a.5.5 0 0 0-.5-.5"/>
+                  </svg>
+                  </button> */}
               </div>
           ))
       ) : (
           <p className={`no_result_found ${userContacts.length === 0 ? '' : 'display_none'} `}>No results found</p>
+      )}
+    </div>
+    </div> 
+    <div className='dashboard'>
+      <h2>REQUESTS</h2>
+      <div className='array_div'>
+        {ReceiveRequest.length > 0 ? (
+          ReceiveRequest.map((ele,index) => (
+              <div key={index} className={`user-card contacts_section ${BlockedContacts[ele._id] ? 'display_none' : ''} ${BlockedBy[ele._id] ? 'display_none' : ""}`} > {/* If a person is blocked we will not display that person && if user is blocked by someOne we will not diplay thet person too*/}
+                  <img src={ele.image} alt='User Avatar' />
+                  <p>{ele.name}</p>
+                  <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
+                  {/* this means also assign another class , 
+                  we can assign 2 classes like this className="status online_status" */}
+                  <button onClick={()=>{Accept(ele._id)}}>Accept</button>
+                  <button onClick={()=>{Reject(ele._id)}}>Cancel</button>
+              </div>
+          ))
+      ) : (
+          <p className={`no_result_found ${ReceiveRequest.length === 0 ? '' : 'display_none'} `}>No results found</p>
       )}
     </div>
     </div> 
@@ -394,5 +450,3 @@ const Dashboard = () => {
 }
 
 export default Dashboard ;
-
-

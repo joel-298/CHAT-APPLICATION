@@ -5,6 +5,7 @@ import Home from "./Pages/Home";
 import Signup from "./Pages/Signup";
 import Login from "./Pages/Login";
 import Dashboard from "./Pages/Dashboard";
+// import Profile from "./Pages/Profile";
 
 function App() {
   return (
