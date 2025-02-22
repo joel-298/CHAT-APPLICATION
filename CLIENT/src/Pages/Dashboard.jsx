@@ -74,10 +74,45 @@ const Dashboard = () => {
             console.log("Send request data",data) ; 
             setSentRequest(data); // not here when im printing this array of sentRequest im just seeing map and rest values of ele.name , ele.image is not being seen and same as below this function
           });
+          // 6) RECEIVE REQUEST 
           socket.on("receive_request", (data) => {
             console.log("receive request data",data) // same as above
             setReceiveRequest(data) ;             
-          })
+          }); 
+          // 7) ACCEPT REQUEST 
+          socket.on("accept_request", (data) => {
+            setUserContacts(data.contacts) ; 
+            setReceiveRequest(data.receive) ; 
+          });
+          // 8) ACCEPTED BY REQUEST
+          socket.on("accepted_by_request", (data) => {
+            setUserContacts(data.contacts) ; 
+            setSentRequest(data.sent) ; 
+          });
+          // 9) REJECT REQUEST 
+          socket.on("reject_request", (data) => {
+            setReceiveRequest(data) ; 
+          });
+          // 10) REJECTED BY REQUEST
+          socket.on("rejected_by_request", (data) => {
+            setSentRequest(data);
+          });
+          // 11) UNFOLLOW REQUEST
+          socket.on("unfollow_request", (data) => {
+            setUserContacts(data);
+          });
+          // 12) UNFOLLOWED BY REQUEST
+          socket.on("unfollowed_by_request", (data) => {
+            setUserContacts(data);
+          });
+          // 13) CANCELED REQUEST
+          socket.on("cancel_request", (data) => {
+            setSentRequest(data) ; 
+          });
+          // 14) CANCELLED BY REQUEST
+          socket.on("cancelled_by_request", (data) => {
+            setReceiveRequest(data)
+          });
         }
         else{
           navigate('/') ;
@@ -155,8 +190,11 @@ const Dashboard = () => {
     if(triggeredFrom == "search") {
       selectedFriend = usersArray.find((user) => user._id === id);
     }
-    else{
+    else if(triggeredFrom == "contacts"){
       selectedFriend = userContacts.find((user) => user._id === id);
+    }
+    else{
+      selectedFriend = ReceiveRequest.find((user) => user._id === id);
     }
     if (selectedFriend) {
       setFriendData(selectedFriend);
@@ -268,7 +306,7 @@ const Dashboard = () => {
       //        remove user from persons sent request array
       // emit from backend these updated array : contacts , sentRequest , receive request 
       // update these three arrays in frontend
-      socket.emit("Accept", {friend_id : id , user_id : userdetails._id , userSocketId : MySocketId , friendSocketId : onlineUsers[id] || null })
+      socket.emit("Accept", {friend_id : id , user_id : userdetails._id , userSocketId : MySocketId , friendSocketId : onlineUsers[id] || null });
       // here online users is a map of key value paris of user_id and their socket id thereofre if friend id is present in map return the socket value in her as a value else make the value ""
     }
   // CANCEL REQUEST
@@ -278,13 +316,22 @@ const Dashboard = () => {
       // use socket io to send req.in backend real time 
       // receive in backend and update this user sendRequest array in backend and other person receiveRequest 
       // emit from backend and receive in useEffect and update receive request array 
+      socket.emit("CancelRequest", {friend_id : id , user_id : userdetails._id , userSocketId : MySocketId , friendSocketId : onlineUsers[id] || null }) ;
     }
   // REJECT 
     const Reject = (id) => {
       console.log("REJECT REQUEST : ", id); 
       // remove from user receive request
       // remove from other person sent request array
+      socket.emit("Reject", {friend_id : id , user_id : userdetails._id , userSocketId : MySocketId , friendSocketId : onlineUsers[id] || null}) ; 
     }
+  // REMOVE FRIEND 
+  const Unfollow = (id) => {
+    console.log("UNFOLLOW : ",id) ; 
+    // update the contacts array from backend of user and other friend too 
+    // also delete chats of both of them optional !
+    socket.emit("Unfollow",{friend_id : id , user_id : userdetails._id , userSocketId : MySocketId , friendSocketId : onlineUsers[id] || null}) ;
+  }
   // DELETE CHATS 
     const DeleteChats = (id) => {
       console.log("DELETING CHATS OF THIS ID : ", id) ; 
@@ -336,7 +383,7 @@ const Dashboard = () => {
                           {/* this means also assign another class , 
                             we can assign 2 classes like this className="status online_status" */}
                           <div className='box2'>
-                            <button className={`Connect ${ele._id == userdetails._id ? 'display_none' : ''} ${SentRequest.some(req => req._id === ele._id) ? 'display_none' : ''} ${ReceiveRequest.some(req=>req._id === ele._id) ? 'display_none' : ''}`} onClick={()=>Request(ele._id)}>Connect</button> 
+                            <button className={`Connect ${ele._id == userdetails._id ? 'display_none' : ''} ${SentRequest.some(req => req._id === ele._id) ? 'display_none' : ''} ${ReceiveRequest.some(req=>req._id === ele._id) ? 'display_none' : ''} ${userContacts.some(req=>req._id === ele._id) ? 'display_none' : ''}`} onClick={()=>Request(ele._id)}>Connect</button> 
                             <button className={`Requested ${ele._id == userdetails._id ? 'display_none' : ''} ${SentRequest.some(req => req._id === ele._id) ? '' : 'display_none'}`} onClick={()=>cancelRequest(ele._id)}>Requested</button>
                             <button className={`Blockbutton ${ele._id == userdetails._id ? 'display_none' : ''}`} onClick={()=>handleBlock(ele._id)}>
                               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-ban" viewBox="0 0 16 16">
@@ -368,17 +415,19 @@ const Dashboard = () => {
       <div className='array_div'>
         {userContacts.length > 0 ? (
           userContacts.map((ele) => (
-              <div key={ele._id} onClick={()=>{handleFriendData(ele._id,"contacts")}} className={`user-card contacts_section ${BlockedContacts[ele._id] ? 'display_none' : ''} ${BlockedBy[ele._id] ? 'display_none' : ""}`} > {/* If a person is blocked we will not display that person && if user is blocked by someOne we will not diplay thet person too*/}
-                  <img src={ele.image} alt='User Avatar' />
-                  <p>{ele.name}</p>
-                  <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
+              <div key={ele._id} className={`user-card contacts_section ${BlockedContacts[ele._id] ? 'display_none' : ''} ${BlockedBy[ele._id] ? 'display_none' : ""}`} > {/* If a person is blocked we will not display that person && if user is blocked by someOne we will not diplay thet person too*/}
+                  <div onClick={()=>{handleFriendData(ele._id,"contacts")}} className='box1'>
+                    <img src={ele.image} alt='User Avatar' />
+                    <p>{ele.name}</p>
+                    <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
+                  </div>
                   {/* this means also assign another class , 
                   we can assign 2 classes like this className="status online_status" */}
-                  {/* <button onClick={()=>{DeleteChats(ele._id)}}>
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16">
-                    <path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5m-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5M4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06m6.53-.528a.5.5 0 0 0-.528.47l-.5 8.5a.5.5 0 0 0 .998.058l.5-8.5a.5.5 0 0 0-.47-.528M8 4.5a.5.5 0 0 0-.5.5v8.5a.5.5 0 0 0 1 0V5a.5.5 0 0 0-.5-.5"/>
-                  </svg>
-                  </button> */}
+                  <div className='box2'>
+                    <button onClick={()=>{Unfollow(ele._id)}} className={`${userdetails._id == ele._id ? 'display_none' : ''}`}>Unfollow</button>
+                     {/*Give a option of BLOCK AND DELETE CHAT IN HERE TOO */}
+                  </div> 
+
               </div>
           ))
       ) : (
@@ -387,18 +436,23 @@ const Dashboard = () => {
     </div>
     </div> 
     <div className='dashboard'>
+
       <h2>REQUESTS</h2>
       <div className='array_div'>
         {ReceiveRequest.length > 0 ? (
           ReceiveRequest.map((ele,index) => (
               <div key={index} className={`user-card contacts_section ${BlockedContacts[ele._id] ? 'display_none' : ''} ${BlockedBy[ele._id] ? 'display_none' : ""}`} > {/* If a person is blocked we will not display that person && if user is blocked by someOne we will not diplay thet person too*/}
-                  <img src={ele.image} alt='User Avatar' />
-                  <p>{ele.name}</p>
-                  <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
+                  <div className='box1' onClick={()=>{handleFriendData(ele._id,"requests")}}>
+                    <img src={ele.image} alt='User Avatar' />
+                    <p>{ele.name}</p>
+                    <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
                   {/* this means also assign another class , 
                   we can assign 2 classes like this className="status online_status" */}
-                  <button onClick={()=>{Accept(ele._id)}}>Accept</button>
-                  <button onClick={()=>{Reject(ele._id)}}>Cancel</button>
+                  </div>
+                  <div className='box2'>
+                    <button onClick={()=>{Accept(ele._id)}}>Accept</button>
+                    <button onClick={()=>{Reject(ele._id)}}>Reject</button>
+                  </div> 
               </div>
           ))
       ) : (

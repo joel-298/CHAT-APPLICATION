@@ -25,7 +25,7 @@ app.use('/auth',auth) ;
 app.use('/user',user) ; 
 app.use('/messages',message) ; 
 
-// ASEND MESSAGE
+// SEND MESSAGE
 const addMessageToDb = async (data) => {
     const {userdetails , friend_data , message} = data ; 
     try {
@@ -66,11 +66,8 @@ const addMessageToDb = async (data) => {
 const sendRequest = async (data) => {
     const {friend_id,user_id} = data ; 
     try {
-        let object_user = await friendsModel.findOne({user_id:user_id})          
-        .populate('SentRequest', "name image email") ;
-        let object_friend = await friendsModel.findOne({user_id:friend_id})
-        .populate('ReceiveRequest', "name image email") ;
-
+        let object_user = await friendsModel.findOne({user_id:user_id})  ;        
+        let object_friend = await friendsModel.findOne({user_id:friend_id}) ;
         if(!object_user || !object_friend) {
             return {boolean : false} ; 
         }
@@ -96,6 +93,121 @@ const sendRequest = async (data) => {
     }
 };
 
+// ACCEPT REQUEST
+const AcceptRequest = async (data) => {
+    const {friend_id , user_id} = data ; 
+    try {
+        let object_user = await friendsModel.findOne({user_id : user_id}) ; 
+        let object_friend = await friendsModel.findOne({user_id : friend_id}) ;
+        if(!object_user || !object_friend) {
+            return {boolean : false} ; 
+        }
+        else{ 
+            object_user.contacts.push(friend_id) ; 
+            object_friend.contacts.push(user_id) ; 
+            object_user.ReceiveRequest = object_user.ReceiveRequest.filter(id => id != friend_id) ; 
+            object_friend.SentRequest = object_friend.SentRequest.filter(id => id != user_id) ; 
+            await object_user.save() ; 
+            await object_friend.save() ; 
+
+            // **Re-fetch the updated objects with populated references**
+            object_user = await friendsModel.findOne({user_id : user_id})
+            .populate('ReceiveRequest', "name image email")
+            .populate('contacts', "name image email");
+            object_friend = await friendsModel.findOne({user_id : friend_id})
+            .populate('SentRequest', "name image email")
+            .populate('contacts', "name email image") ;  
+            return {boolean : true , userData : object_user , friendData : object_friend} ; 
+        }  
+    } catch (error) {
+        console.log("Error while Accepting request" , error) ; 
+        return {boolean : false } ; 
+    }
+};
+
+// REJECT REQUEST 
+const RejectRequest = async (data) => {
+    const {friend_id , user_id} = data ; 
+    try {
+        let object_user = await friendsModel.findOne({user_id : user_id}) ; 
+        let object_friend = await friendsModel.findOne({user_id : friend_id}) ; 
+        if(!object_user || !object_friend) {
+            return {boolean : false} ; 
+        }
+        else {
+            object_user.ReceiveRequest = object_user.ReceiveRequest.filter(id => id != friend_id) ; 
+            object_friend.SentRequest = object_user.SentRequest.filter(id => id !== user_id);
+            await object_user.save() ; 
+            await object_friend.save() ; 
+
+            // **Re-fetch the updated objects with populated references**
+            object_user = await friendsModel.findOne({user_id : user_id})
+            .populate("ReceiveRequest", "name image email") ; 
+            object_friend = await friendsModel.findOne({user_id : friend_id}) 
+            .populate("SentRequest", "name image email") ; 
+            return {boolean : true , userData : object_user , friendData : object_friend }
+        }
+    } catch (error) {
+        console.log("Error while Rejecting request" , error) ; 
+        return {boolean : false } ;  
+    }
+};
+
+// UNFOLLOW 
+const  UnfollowRequest = async (data) => {
+    const {friend_id , user_id} = data ; 
+    try {
+        let object_user = await friendsModel.findOne({user_id : user_id}) ; 
+        let object_friend = await friendsModel.findOne({user_id : friend_id}) ; 
+        if(!object_user || !object_friend) {
+            return {boolean : false} ; 
+        }
+        else {
+            object_user.contacts = object_user.contacts.filter(id => id != friend_id) ; 
+            object_friend.contacts = object_friend.contacts.filter(id => id != user_id);
+            await object_user.save() ; 
+            await object_friend.save() ; 
+
+            // **Re-fetch the updated objects with populated references**
+            object_user = await friendsModel.findOne({user_id : user_id})
+            .populate("contacts", "name image email") ; 
+            object_friend = await friendsModel.findOne({user_id : friend_id}) 
+            .populate("contacts", "name image email") ; 
+            return {boolean : true , userData : object_user , friendData : object_friend }
+        }
+    } catch (error) {
+        console.log("Error while Rejecting request" , error) ; 
+        return {boolean : false } ;  
+    }
+};
+
+// CANCEL REQUEST
+const  CancelRequest = async (data) => {
+    const {friend_id , user_id} = data ; 
+    try {
+        let object_user = await friendsModel.findOne({user_id : user_id}) ; 
+        let object_friend = await friendsModel.findOne({user_id : friend_id}) ; 
+        if(!object_user || !object_friend) {
+            return {boolean : false} ; 
+        }
+        else {
+            object_user.SentRequest = object_user.SentRequest.filter(id => id != friend_id) ; 
+            object_friend.ReceiveRequest = object_friend.ReceiveRequest.filter(id => id != user_id);
+            await object_user.save() ; 
+            await object_friend.save() ; 
+
+            // **Re-fetch the updated objects with populated references**
+            object_user = await friendsModel.findOne({user_id : user_id})
+            .populate("SentRequest", "name image email") ; 
+            object_friend = await friendsModel.findOne({user_id : friend_id}) 
+            .populate("ReceiveRequest", "name image email") ; 
+            return {boolean : true , userData : object_user , friendData : object_friend }
+        }
+    } catch (error) {
+        console.log("Error while Rejecting request" , error) ; 
+        return {boolean : false } ;  
+    }
+};
 
 
 const server = createServer(app) ; 
@@ -133,7 +245,7 @@ io.on("connection",(socket)=>{
     socket.on("addRequest", async (data) => { // friend_id , user_id , userSocketId , friendSocketId
         console.log(`Send Request to : ${data.friend_id} , from : ${data.user_id}`) ; 
         if(data.friendSocketId != null) {
-            const obj = await sendRequest(data) ; // return object containing boolean and data.user_id sentRequests and data.friend_id receiveRequests
+            const obj = await sendRequest(data) ; // return object containing {boolean} and {data.user_id sentRequests} and {data.friend_id receiveRequests}
             if(obj.boolean) {
                 console.log("Emitting in real time");
                 // emit to friend id receiveRequests
@@ -146,8 +258,8 @@ io.on("connection",(socket)=>{
             }
         }
         else{
-            // friend is offline just directly append it to database 
-            const obj = await sendRequest(data) ;
+            // friend is offline just directly append it to database , and emit those in which user is online
+            const obj = await sendRequest(data) ; 
             if(obj.boolean) {
                 io.to(data.userSocketId).emit("send_request",obj.userData.SentRequest) ;
             }
@@ -159,8 +271,103 @@ io.on("connection",(socket)=>{
     }) ;
 
     // ACCEPT 
-    socket.on("Accept", (data) => {
-        
+    socket.on("Accept", async (data) => {
+        console.log(`Accept Request From : ${data.friend_id} By : ${data.user_id}` ) ; 
+        if(data.friendSocketId != null) {
+            const obj = await AcceptRequest(data) ; // return object containing {boolean} , {data.user_id : Contacts , Receive Request} , {data.friend_id : SendRequest , Contacts} 
+            if(obj.boolean) {
+                io.to(data.userSocketId).emit("accept_request", { contacts : obj.userData.contacts , receive : obj.userData.ReceiveRequest} ) ; 
+                io.to(data.friendSocketId).emit("accepted_by_request", {contacts : obj.friendData.contacts , sent : obj.friendData.SentRequest}) ; 
+            }
+            else{
+                // do not emit
+            }
+        }
+        else{
+            // friend is offline just directly append it to database , and emit those in which user is online
+            const obj = await AcceptRequest(data) ;
+            if(obj.boolean) {
+                io.to(data.userSocketId).emit("accept_request", { contacts : obj.userData.contacts , receive : obj.userData.ReceiveRequest} ) ; 
+            }  
+            else{
+                // do not emit
+            }
+        }
+    });
+
+    // REJECT 
+    socket.on("Reject" , async (data) => {
+        console.log(`Reject Request From : ${data.user_id} To : ${data.friend_id} `) ; 
+        if(data.friendSocketId != null) {
+            const obj = await RejectRequest(data) ;  // return object containing {boolean} , {data.user_id : Receive Request} , {data.friend_id : SendRequest} 
+            if(obj.boolean) {
+                io.to(data.userSocketId).emit("reject_request",obj.userData.ReceiveRequest) ; 
+                io.to(data.friendSocketId).emit("rejected_by_request",obj.friendData.SentRequest)
+            }
+            else{
+                // do not emit 
+            }
+        }
+        else{
+            // friend is offline just directly append it to database , and emit those in which user is online
+            const obj = await RejectRequest(data) ;  
+            if(obj.boolean) {
+                io.to(data.userSocketId).emit("reject_request",obj.userData.ReceiveRequest) ; 
+            }
+            else{
+                // do not emit 
+            }
+        }
+    });
+
+    // UNFOLLOW 
+    socket.on("Unfollow", async (data) => {
+        console.log(`Unfollow Request From : ${data.user_id} To : ${data.friend_id} `) ; 
+        if(data.friendSocketId != null) {
+            const obj = await UnfollowRequest(data) ;  // return object containing {boolean} , {data.user_id : contacts } , {data.friend_id : contacts } 
+            if(obj.boolean) {
+                io.to(data.userSocketId).emit("unfollow_request",obj.userData.contacts) ; 
+                io.to(data.friendSocketId).emit("unfollowed_by_request",obj.friendData.contacts)
+            }
+            else{
+                // do not emit 
+            }
+        }
+        else{
+            // friend is offline just directly append it to database , and emit those in which user is online
+            const obj = await UnfollowRequest(data) ;  
+            if(obj.boolean) {
+                io.to(data.userSocketId).emit("unfollow_request",obj.userData.contacts) ; 
+            }
+            else{
+                // do not emit 
+            }
+        }
+    });
+
+    // CANCEL REQUEST 
+    socket.on("CancelRequest", async (data) => {
+        console.log(`Cancel Request From : ${data.user_id} To : ${data.friend_id} `) ; 
+        if(data.friendSocketId != null) {
+            const obj = await CancelRequest(data) ;  // return object containing {boolean} , {data.user_id : contacts } , {data.friend_id : contacts } 
+            if(obj.boolean) {
+                io.to(data.userSocketId).emit("cancel_request",obj.userData.SentRequest) ; 
+                io.to(data.friendSocketId).emit("cancelled_by_request",obj.friendData.ReceiveRequest)
+            }
+            else{
+                // do not emit 
+            }
+        }
+        else{
+            // friend is offline just directly append it to database , and emit those in which user is online
+            const obj = await CancelRequest(data) ;  
+            if(obj.boolean) {
+                io.to(data.userSocketId).emit("cancel_request",obj.userData.SentRequest) ; 
+            }
+            else{
+                // do not emit 
+            }
+        }
     });
 
     // DISCONNECT
@@ -183,3 +390,9 @@ server.listen(PORT,(err)=>{
         console.log(`SERVER RUNNING ON PORT : ${4000}`);
     }
 }); 
+
+
+
+// what will happen when we do not emit db entries will not work 
+// only the user will get changes in its ui but in the whole logic in backend because  
+// some error occured while saving in backend !
