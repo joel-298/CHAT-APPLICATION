@@ -182,7 +182,7 @@ const  UnfollowRequest = async (data) => {
 };
 
 // CANCEL REQUEST
-const  CancelRequest = async (data) => {
+const CancelRequest = async (data) => {
     const {friend_id , user_id} = data ; 
     try {
         let object_user = await friendsModel.findOne({user_id : user_id}) ; 
@@ -201,6 +201,62 @@ const  CancelRequest = async (data) => {
             .populate("SentRequest", "name image email") ; 
             object_friend = await friendsModel.findOne({user_id : friend_id}) 
             .populate("ReceiveRequest", "name image email") ; 
+            return {boolean : true , userData : object_user , friendData : object_friend }
+        }
+    } catch (error) {
+        console.log("Error while Rejecting request" , error) ; 
+        return {boolean : false } ;  
+    }
+};
+
+// BLOCK REQUEST 
+const BlockRequest = async (data) => {
+    const {friend_id , user_id} = data ; 
+    try {
+        let object_user = await friendsModel.findOne({user_id : user_id}) ; 
+        let object_friend = await friendsModel.findOne({user_id : friend_id}) ; 
+        if(!object_user || !object_friend) {
+            return {boolean : false} ; 
+        }
+        else {
+            object_user.BlockedContacts.push(friend_id) ; 
+            object_friend.BlockedBy.push(user_id);
+            await object_user.save() ; 
+            await object_friend.save() ; 
+
+            // **Re-fetch the updated objects with populated references**
+            object_user = await friendsModel.findOne({user_id : user_id})
+            .populate("BlockedContacts", "name image email") ; 
+            object_friend = await friendsModel.findOne({user_id : friend_id}) 
+            .populate("BlockedBy", "name image email") ; 
+            return {boolean : true , userData : object_user , friendData : object_friend }
+        }
+    } catch (error) {
+        console.log("Error while Rejecting request" , error) ; 
+        return {boolean : false } ;  
+    }
+};
+
+// UNBLOCK REQUEST 
+const UnBlockRequest = async (data) => {
+    const {friend_id , user_id} = data ; 
+    try {
+        let object_user = await friendsModel.findOne({user_id : user_id}) ; 
+        let object_friend = await friendsModel.findOne({user_id : friend_id}) ; 
+        if(!object_user || !object_friend) {
+            return {boolean : false} ; 
+        }
+        else {
+            object_user.BlockedContacts = object_user.BlockedContacts.filter(id => id != friend_id) ; 
+            object_friend.BlockedBy = object_friend.BlockedBy.filter(id => id != user_id);
+            await object_user.save() ; 
+            await object_friend.save() ; 
+
+            // **Re-fetch the updated objects with populated references**
+            object_user = await friendsModel.findOne({user_id : user_id})
+            .populate("BlockedContacts", "name image email") ; 
+            object_friend = await friendsModel.findOne({user_id : friend_id}) 
+            .populate("BlockedBy", "name image email") ; 
             return {boolean : true , userData : object_user , friendData : object_friend }
         }
     } catch (error) {
@@ -368,6 +424,56 @@ io.on("connection",(socket)=>{
                 // do not emit 
             }
         }
+    });
+
+    // BLOCK 
+    socket.on("Block", async (data) => {
+        console.log(`Block Request From : ${data.user_id} To : ${data.friend_id} `) ; 
+        if(data.friendSocketId != null) {
+            const obj = await BlockRequest(data) ;  // return object containing {boolean} , {data.user_id : BlockedContacts } , {data.friend_id : BlockedBy } 
+            if(obj.boolean) {
+                io.to(data.userSocketId).emit("block_request",obj.userData.BlockedContacts) ; 
+                io.to(data.friendSocketId).emit("blocked_by_request",obj.friendData.BlockedBy)
+            }
+            else{
+                // do not emit 
+            }
+        }
+        else{
+            // friend is offline just directly append it to database , and emit those in which user is online
+            const obj = await BlockRequest(data) ;  
+            if(obj.boolean) {
+                io.to(data.userSocketId).emit("block_request",obj.userData.BlockedContacts) ; 
+            }
+            else{
+                // do not emit 
+            }
+        }      
+    });
+    
+    // UNBLOCK 
+    socket.on("Unblock", async (data) => {
+        console.log(`UnBlock Request From : ${data.user_id} To : ${data.friend_id} `) ; 
+        if(data.friendSocketId != null) {
+            const obj = await UnBlockRequest(data) ;  // return object containing {boolean} , {data.user_id : BlockedContacts } , {data.friend_id : BlockedBy } 
+            if(obj.boolean) {
+                io.to(data.userSocketId).emit("unblock_request",obj.userData.BlockedContacts) ; 
+                io.to(data.friendSocketId).emit("unblocked_by_request",obj.friendData.BlockedBy)
+            }
+            else{
+                // do not emit 
+            }
+        }
+        else{
+            // friend is offline just directly append it to database , and emit those in which user is online
+            const obj = await UnBlockRequest(data) ;  
+            if(obj.boolean) {
+                io.to(data.userSocketId).emit("unblock_request",obj.userData.BlockedContacts) ; 
+            }
+            else{
+                // do not emit 
+            }
+        }      
     });
 
     // DISCONNECT

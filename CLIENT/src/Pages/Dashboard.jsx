@@ -19,9 +19,8 @@ const Dashboard = () => {
         // USER SEND REQUESTED LIST , USER RECEIVE REQUEST LIST , USER BLOCK LIST , USER BLOCK BY LIST 
         setSentRequest(response.data.SentRequest) ;
         setReceiveRequest(response.data.ReceiveRequest) ; 
-        // console.log("User requestedQueue ",response.data.requestedQueue) ; 
-        // setBlockedContacts(response.data.BlockedContacts) ; 
-        // console.log("User Blocked Queue ", response.data.BlockedContacts) ; 
+        setBlockedContacts(response.data.BlockedContacts);
+        setBlockedBy(response.data.BlockedBy);
       }
       else{
         console.log("User array return false") ;
@@ -113,6 +112,22 @@ const Dashboard = () => {
           socket.on("cancelled_by_request", (data) => {
             setReceiveRequest(data)
           });
+          // 15) BLOCK REQUEST
+          socket.on("block_request", (data) => {
+            setBlockedContacts(data); 
+          });
+          // 16) BLOCKED BY REQUEST
+          socket.on("blocked_by_request", (data) => {
+            setBlockedBy(data); 
+          });
+          // 17) UNBLOCK REQUEST 
+          socket.on("unblock_request", (data) => {
+            setBlockedContacts(data) ; 
+          });
+          // 18) UNBLOCKED BY REQUEST 
+          socket.on("unblocked_by_request",(data)=>{
+            setBlockedBy(data) ; 
+          });
         }
         else{
           navigate('/') ;
@@ -148,7 +163,16 @@ const Dashboard = () => {
         try {
           const response = await axios.get(`http://localhost:4000/user/search/${value}` , {withCredentials : true});
           if (value === latestQuery.current) {
-            setUsersArray(response.data.boolean ? response.data.array : []);
+            let filteredUsers = response.data.boolean ? response.data.array : [];
+
+            // **Filter out users present in either BlockedContacts OR BlockedBy**
+            filteredUsers = filteredUsers.filter(
+                user => 
+                    !BlockedContacts.some(req => req._id === user._id) && 
+                    !BlockedBy.some(req => req._id === user._id)
+            );
+
+            setUsersArray(filteredUsers);
           }
         } catch (error) {
           console.error('Error while searching for users:', error);
@@ -275,6 +299,7 @@ const Dashboard = () => {
       // also check is user id is present in contacts || sendRequestarray || ReceiveRequest then remove it 
       
       // ALSO CHECK IF THEIR CHATS EXISTS AND REMOVE FROM CHAT AND MESSAGE BECAUSE OF LIMITED RESOURCES ... 
+      socket.emit("Block", {friend_id : blockId , user_id : userdetails._id , userSocketId : MySocketId , friendSocketId : onlineUsers[blockId] || null}) ; 
       setBlockId("") ; 
     }
     const handleBlockNo = () => {
@@ -285,6 +310,7 @@ const Dashboard = () => {
     const handleUnblock = (id) => { // receive id of that user
       console.log("ID FOR UNBLOCKING : ", id) ; 
       // use socket io
+      socket.emit("Unblock", {friend_id : id , user_id : userdetails._id , userSocketId : MySocketId , friendSocketId : onlineUsers[id] || null }) ; 
     } 
   // SEND REQUEST
     const Request = (id) => { // receive id of that user
@@ -343,6 +369,13 @@ const Dashboard = () => {
       // return setCharArray to null
     }
 
+    // ALSO HELP TO REMOVE FROM SEARCH BAR
+    useEffect(() => {
+      if (search_input) { // Only trigger search if input is not empty
+        handleSearchInput({ target: { value: search_input } });
+      }
+    }, [BlockedContacts, BlockedBy]);
+
   return (
     <>
     <div className='profile'>
@@ -373,7 +406,7 @@ const Dashboard = () => {
             <div className='result'>
               {usersArray.length > 0 ? (
                   usersArray.map((ele) => (
-                      <div key={ele._id} className={`people ${BlockedContacts[ele._id] ? 'display_none' : ''} ${BlockedBy[ele._id] ? 'display_none' : ""}`}> {/* If a person is blocked we will not display that person && if the user is blocked by someone we will not display that person too*/}
+                      <div key={ele._id} className={`people ${BlockedContacts.some(req => req._id == ele._id) ? 'display_none' : ''} ${BlockedBy.some(req => req._id == ele._id) ? 'display_none' : ""}`}> {/* If a person is blocked we will not display that person && if the user is blocked by someone we will not display that person too*/}
                         <div className='user-card'> 
                           <div onClick={()=>{handleFriendData(ele._id,"search")}} className='box1'>
                             <img src={ele.image} alt='User Avatar' />
@@ -415,7 +448,7 @@ const Dashboard = () => {
       <div className='array_div'>
         {userContacts.length > 0 ? (
           userContacts.map((ele) => (
-              <div key={ele._id} className={`user-card contacts_section ${BlockedContacts[ele._id] ? 'display_none' : ''} ${BlockedBy[ele._id] ? 'display_none' : ""}`} > {/* If a person is blocked we will not display that person && if user is blocked by someOne we will not diplay thet person too*/}
+              <div key={ele._id} className={`user-card contacts_section ${BlockedContacts.some(req => req._id == ele._id) ? 'display_none' : ''} ${BlockedBy.some(req => req._id == ele._id) ? 'display_none' : ""}`} > {/* If a person is blocked we will not display that person && if user is blocked by someOne we will not diplay thet person too*/}
                   <div onClick={()=>{handleFriendData(ele._id,"contacts")}} className='box1'>
                     <img src={ele.image} alt='User Avatar' />
                     <p>{ele.name}</p>
@@ -436,12 +469,11 @@ const Dashboard = () => {
     </div>
     </div> 
     <div className='dashboard'>
-
       <h2>REQUESTS</h2>
       <div className='array_div'>
         {ReceiveRequest.length > 0 ? (
           ReceiveRequest.map((ele,index) => (
-              <div key={index} className={`user-card contacts_section ${BlockedContacts[ele._id] ? 'display_none' : ''} ${BlockedBy[ele._id] ? 'display_none' : ""}`} > {/* If a person is blocked we will not display that person && if user is blocked by someOne we will not diplay thet person too*/}
+              <div key={index} className={`user-card contacts_section ${BlockedContacts.some(req => req._id == ele._id) ? 'display_none' : ''} ${BlockedBy.some(req => req._id == ele._id) ? 'display_none' : ""}`} > {/* If a person is blocked we will not display that person && if user is blocked by someOne we will not diplay thet person too*/}
                   <div className='box1' onClick={()=>{handleFriendData(ele._id,"requests")}}>
                     <img src={ele.image} alt='User Avatar' />
                     <p>{ele.name}</p>
@@ -461,8 +493,32 @@ const Dashboard = () => {
     </div>
     </div> 
 
+    <div className='dashboard'>
+      <h2>BLOCKED CONTACTS</h2>
+      <div className='array_div'>
+        {BlockedContacts.length > 0 ? (
+          BlockedContacts.map((ele,index) => (
+              <div key={index} className={`user-card contacts_section`} > {/* If a person is blocked we will not display that person && if user is blocked by someOne we will not diplay thet person too*/}
+                  <div className='box1'>
+                    <img src={ele.image} alt='User Avatar' />
+                    <p>{ele.name}</p>
+                    <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
+                  {/* this means also assign another class , 
+                  we can assign 2 classes like this className="status online_status" */}
+                  </div>
+                  <div className='box2'>
+                    <button onClick={()=>{handleUnblock(ele._id)}}>Unblock</button>
+                  </div> 
+              </div>
+          ))
+      ) : (
+          <p className={`no_result_found ${BlockedContacts.length === 0 ? '' : 'display_none'} `}>No results found</p>
+      )}
+    </div>
+    </div> 
+
     <div className='chats'>
-      {friend_data._id == "" ? (
+      {friend_data._id == "" || BlockedContacts.some(req => req._id == friend_data._id) || BlockedBy.some(req => req._id == friend_data._id) ? (
         <>
         <div className='no_user_selected'>
           <h2>WELCOME TO OUR CHAT APP</h2>
