@@ -4,4 +4,31 @@ In Connect , Request , Block , Unblock , Accept , Reject , BlockedBy :
     if yes then do not push 
     else THEN U ARE ALLOWED TO PUSH : 
     For example sending connection request again and again result in creating same user multiple requests .... 
-    
+
+
+
+
+When someone creates group 
+this is going to be 1Object and its chat Object is going to be null :  
+GROUP SCHEMA : 
+    GROUP ID : through which anyone can join
+    CONTAINS PARTICIPANTS : 
+    ADMIN : authority to kick or add or delete Group !
+    BLOCKED MEMBERS : they cannot join again 
+
+// When 1st message is emitted by users in that particular group : 
+// CREATE CHAT OBJECT : 
+    ---> sender : user ----------------------> BTW IT DOSN'T MATTER WHO THE SENDER IS : 
+    ---> receiver : groupId 
+
+// CREATE A MESSAGE OBJECT : 
+    ---> chat id : 
+    ---> sender id : user
+
+    // If any other user sends message : 
+    // we are going to check in Chat Schema that if in receiver section : GROUP ID : EXISTS OR NOT : 
+    // if yes : obtain CHAT ID OF THAT GROUP and append the message object in message column 
+    // else CREATE A NEW CHAT OBJECT in which : 
+    //                      sender : other user 
+    //                      receiver : GROUP ID : 
+    //                 AND THEN APPEND THE MESSAGE OBJECT IN MESSAGE COLUMN : 

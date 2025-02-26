@@ -430,16 +430,16 @@ const Dashboard = () => {
                             <button onClick={()=>{Accept(ele._id)}} className={`accept ${ReceiveRequest.some(req=> req._id === ele._id) ? '' : 'display_none'} `}>Accept</button>
                             <button onClick={()=>{Reject(ele._id)}} className={`reject ${ReceiveRequest.some(req=> req._id === ele._id) ? '' : 'display_none'} `}>Reject</button>
                           </div>
-                          </div>
-                          <div  className={`${
-                              blockId === "" || ele._id === userdetails._id || (ele._id !== blockId && blockId !== "")
-                                ? "display_none"
-                                : "popup"
-                            }`}>
-                            <p>Are u sure u want to block this {ele.name} account ? </p>&nbsp;
-                            <button onClick={handleBlockYes}>Yes</button>&nbsp;
-                            <button onClick={handleBlockNo}>No</button>
-                          </div>
+                        </div>
+                        <div  className={`${
+                          blockId === "" || ele._id === userdetails._id || (ele._id !== blockId && blockId !== "")
+                              ? "display_none"
+                              : "popup"
+                          }`}>
+                          <p>Are u sure u want to block this {ele.name} account ? </p>&nbsp;
+                          <button onClick={handleBlockYes}>Yes</button>&nbsp;
+                          <button onClick={handleBlockNo}>No</button>
+                        </div>
                       </div>
                   ))
               ) : (
@@ -452,7 +452,8 @@ const Dashboard = () => {
       <div className='array_div'>
         {userContacts.length > 0 ? (
           userContacts.map((ele) => (
-              <div key={ele._id} className={`user-card contacts_section ${BlockedContacts.some(req => req._id == ele._id) ? 'display_none' : ''} ${BlockedBy.some(req => req._id == ele._id) ? 'display_none' : ""}`} > {/* If a person is blocked we will not display that person && if user is blocked by someOne we will not diplay thet person too*/}
+              <div key={ele._id} className={`contacts_section ${BlockedContacts.some(req => req._id == ele._id) ? 'display_none' : ''} ${BlockedBy.some(req => req._id == ele._id) ? 'display_none' : ""}`} > {/* If a person is blocked we will not display that person && if user is blocked by someOne we will not diplay thet person too*/}
+                <div className='user-card'> 
                   <div onClick={()=>{handleFriendData(ele._id,"contacts")}} className='box1'>
                     <img src={ele.image} alt='User Avatar' />
                     <p>{ele.name}</p>
@@ -462,10 +463,28 @@ const Dashboard = () => {
                   we can assign 2 classes like this className="status online_status" */}
                   <div className='box2'>
                     <button onClick={()=>{Unfollow(ele._id)}} className={`${userdetails._id == ele._id ? 'display_none' : ''}`}>Unfollow</button>
-                     {/*Give a option of BLOCK AND DELETE CHAT IN HERE TOO */}
-                    <button className={`${ele._id != userdetails._id && onlineUsers[ele._id] ? "" : "display_none"}`}>CALL</button>
+                     {/*Give a option of DELETE CHAT */}
+                    {/* <button className={`${ele._id != userdetails._id && onlineUsers[ele._id] ? "" : "display_none"}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-camera-video-fill" viewBox="0 0 16 16">
+                      <path fill-rule="evenodd" d="M0 5a2 2 0 0 1 2-2h7.5a2 2 0 0 1 1.983 1.738l3.11-1.382A1 1 0 0 1 16 4.269v7.462a1 1 0 0 1-1.406.913l-3.111-1.382A2 2 0 0 1 9.5 13H2a2 2 0 0 1-2-2z"/>
+                    </svg>
+                    </button> */}
+                    <button className={`Blockbutton ${ele._id == userdetails._id ? 'display_none' : ''}`} onClick={()=>handleBlock(ele._id)}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-ban" viewBox="0 0 16 16">
+                        <path d="M15 8a6.97 6.97 0 0 0-1.71-4.584l-9.874 9.875A7 7 0 0 0 15 8M2.71 12.584l9.874-9.875a7 7 0 0 0-9.874 9.874ZM16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0"/>
+                      </svg>
+                    </button>
                   </div> 
-
+                </div>
+                <div  className={`${
+                  blockId === "" || ele._id === userdetails._id || (ele._id !== blockId && blockId !== "")
+                      ? "display_none"
+                      : "popup"
+                  }`}>
+                  <p>Are u sure u want to block this {ele.name} account ? </p>&nbsp;
+                  <button onClick={handleBlockYes}>Yes</button>&nbsp;
+                  <button onClick={handleBlockNo}>No</button>
+                </div>
               </div>
           ))
       ) : (
@@ -522,6 +541,11 @@ const Dashboard = () => {
     </div>
     </div> 
 
+    <div className='Chatbar'>
+      <h2>CHATS</h2>
+      
+    </div>
+
     <div className='chats'>
       {friend_data._id == "" || BlockedContacts.some(req => req._id == friend_data._id) || BlockedBy.some(req => req._id == friend_data._id) ? (
         <>
@@ -537,6 +561,11 @@ const Dashboard = () => {
           <p>{friend_data.name}</p>
           {/* <p>{friend_data._id}</p> */}
           <div className={`status ${onlineUsers[friend_data._id] ? 'online_status' : ''}`}></div>
+          <button className={`${onlineUsers[friend_data._id] && userContacts.some(req => req._id == friend_data._id) && friend_data._id != userdetails._id ? '' : 'display_none'}`} >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-camera-video-fill" viewBox="0 0 16 16">
+              <path fill-rule="evenodd" d="M0 5a2 2 0 0 1 2-2h7.5a2 2 0 0 1 1.983 1.738l3.11-1.382A1 1 0 0 1 16 4.269v7.462a1 1 0 0 1-1.406.913l-3.111-1.382A2 2 0 0 1 9.5 13H2a2 2 0 0 1-2-2z"/>
+            </svg>
+          </button>
         </div>
         <div className='messages'>
           {chats.length > 0 ? (

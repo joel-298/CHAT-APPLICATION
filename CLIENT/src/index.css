@@ -141,7 +141,7 @@ p , button {
 .people .user-card {
   justify-content: space-between;
 }
-.people .popup {
+.popup {
   font-size: 17px;
   background-color: rgb(63, 63, 65);
   display: flex;

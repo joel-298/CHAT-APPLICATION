@@ -71,9 +71,14 @@ const sendRequest = async (data) => {
         if(!object_user || !object_friend) {
             return {boolean : false} ; 
         }
-        else{
-            object_user.SentRequest.push(friend_id) ; 
-            object_friend.ReceiveRequest.push(user_id) ; 
+        else{   
+            // check here that the person to whom we are sending the request alreay exists in our sent array also check that is the person exists in our received array
+            if(!object_user.SentRequest.includes(friend_id) && !object_user.ReceiveRequest.includes(friend_id)) { // already exists then do not push
+                await object_user.SentRequest.push(friend_id) ; 
+            }
+            if(!object_friend.ReceiveRequest.includes(user_id) && !object_friend.SentRequest.includes(user_id)) { // already exists then do not push
+                await object_friend.ReceiveRequest.push(user_id) ; 
+            }
             console.log("USER DATA" , object_user.SentRequest) ; 
             console.log("FRIEND DATA" , object_friend.ReceiveRequest) ; 
             await object_user.save() ; 
@@ -103,8 +108,14 @@ const AcceptRequest = async (data) => {
             return {boolean : false} ; 
         }
         else{ 
-            object_user.contacts.push(friend_id) ; 
-            object_friend.contacts.push(user_id) ; 
+            const isUserContactExists = object_user.contacts.includes(friend_id) ; 
+            if(!isUserContactExists) {
+                await object_user.contacts.push(friend_id) ; 
+            }
+            const isFriendContactExists = object_friend.contacts.includes(user_id) ; 
+            if(!isFriendContactExists) {
+                await object_friend.contacts.push(user_id) ; 
+            }
             object_user.ReceiveRequest = object_user.ReceiveRequest.filter(id => id != friend_id) ; 
             object_friend.SentRequest = object_friend.SentRequest.filter(id => id != user_id) ; 
             await object_user.save() ; 
@@ -219,8 +230,14 @@ const BlockRequest = async (data) => {
             return {boolean : false} ; 
         }
         else {
-            object_user.BlockedContacts.push(friend_id) ; 
-            object_friend.BlockedBy.push(user_id);
+            const isBlockedContactExists = object_user.BlockedContacts.includes(friend_id) ; 
+            if(!isBlockedContactExists) {
+                await object_user.BlockedContacts.push(friend_id) ;
+            }
+            const isBlockedByContactExists = object_friend.BlockedBy.includes(user_id) ; 
+            if(!isBlockedByContactExists) {
+                await object_friend.BlockedBy.push(user_id);
+            }
             await object_user.save() ; 
             await object_friend.save() ; 
 
