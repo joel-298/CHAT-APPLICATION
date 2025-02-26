@@ -374,6 +374,10 @@ const Dashboard = () => {
       if (search_input) { // Only trigger search if input is not empty
         handleSearchInput({ target: { value: search_input } });
       }
+    setReceiveRequest([...ReceiveRequest.filter(({ _id }) => 
+      !BlockedContacts.some(req => req._id == _id) && 
+      !BlockedBy.some(req => req._id == _id)
+    )]);
     }, [BlockedContacts, BlockedBy]);
 
   return (
@@ -459,6 +463,7 @@ const Dashboard = () => {
                   <div className='box2'>
                     <button onClick={()=>{Unfollow(ele._id)}} className={`${userdetails._id == ele._id ? 'display_none' : ''}`}>Unfollow</button>
                      {/*Give a option of BLOCK AND DELETE CHAT IN HERE TOO */}
+                    <button className={`${ele._id != userdetails._id && onlineUsers[ele._id] ? "" : "display_none"}`}>CALL</button>
                   </div> 
 
               </div>

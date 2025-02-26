@@ -1,0 +1,7 @@
+TARGET : 
+In Connect , Request , Block , Unblock , Accept , Reject , BlockedBy : 
+    Before pushing other values create a search that does that value exists ? 
+    if yes then do not push 
+    else THEN U ARE ALLOWED TO PUSH : 
+    For example sending connection request again and again result in creating same user multiple requests .... 
+    
