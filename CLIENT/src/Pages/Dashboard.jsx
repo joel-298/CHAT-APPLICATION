@@ -265,12 +265,14 @@ const Dashboard = () => {
   const handleSent = async (e) => {
     e.preventDefault() ; 
     console.log(`TO : ${friendSocketId} , FRIEND ID : ${friend_data._id}: message : ${message} `) ; 
-    // append it to chat array too .... 
-    setChatsArray((chats)=>[...chats,{
-      senderId : userdetails._id ,
-      text : message , 
-      createdAt : Date.now() 
-    }]);
+    // append it to chat array too only If selected friend is != userId
+    if(userdetails._id != friendIdRef.current) {
+      setChatsArray((chats)=>[...chats,{
+        senderId : userdetails._id ,
+        text : message , 
+        createdAt : Date.now() 
+      }]);
+    }
     socket.emit("message",{friendSocketId,friend_data,message,userdetails}) ; 
     setMessage("") ; 
   };
@@ -562,8 +564,8 @@ const Dashboard = () => {
           {/* <p>{friend_data._id}</p> */}
           <div className={`status ${onlineUsers[friend_data._id] ? 'online_status' : ''}`}></div>
           <button className={`${onlineUsers[friend_data._id] && userContacts.some(req => req._id == friend_data._id) && friend_data._id != userdetails._id ? '' : 'display_none'}`} >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-camera-video-fill" viewBox="0 0 16 16">
-              <path fill-rule="evenodd" d="M0 5a2 2 0 0 1 2-2h7.5a2 2 0 0 1 1.983 1.738l3.11-1.382A1 1 0 0 1 16 4.269v7.462a1 1 0 0 1-1.406.913l-3.111-1.382A2 2 0 0 1 9.5 13H2a2 2 0 0 1-2-2z"/>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-camera-video-fill" viewBox="0 0 16 16">
+              <path d="M0 5a2 2 0 0 1 2-2h7.5a2 2 0 0 1 1.983 1.738l3.11-1.382A1 1 0 0 1 16 4.269v7.462a1 1 0 0 1-1.406.913l-3.111-1.382A2 2 0 0 1 9.5 13H2a2 2 0 0 1-2-2z"/>
             </svg>
           </button>
         </div>
