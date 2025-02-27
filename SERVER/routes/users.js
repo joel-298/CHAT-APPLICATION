@@ -37,7 +37,8 @@ user.get("/contacts" , protectedRoute  , async (req,res) => { // PROTECTED ROUTE
           .populate('SentRequest', "name image email")
           .populate('ReceiveRequest', "name image email")
           .populate('BlockedContacts', "name image email")
-          .populate('BlockedBy', "name image email");
+          .populate('BlockedBy', "name image email")
+          .populate("Groups", "name image participants admin blocked_members") ; 
     
         if (friendData) {
           return res.json({
@@ -46,7 +47,8 @@ user.get("/contacts" , protectedRoute  , async (req,res) => { // PROTECTED ROUTE
             SentRequest: friendData.SentRequest,
             ReceiveRequest: friendData.ReceiveRequest,
             BlockedContacts: friendData.BlockedContacts,
-            BlockedBy: friendData.BlockedBy
+            BlockedBy: friendData.BlockedBy,
+            Groups: friendData.Groups
           });
         } else {
           return res.json({
@@ -56,7 +58,8 @@ user.get("/contacts" , protectedRoute  , async (req,res) => { // PROTECTED ROUTE
             SentRequest: [],
             ReceiveRequest: [],
             BlockedContacts: [],
-            BlockedBy: []
+            BlockedBy: [],
+            Groups: []
           });
         }
       } catch (error) {
@@ -68,7 +71,8 @@ user.get("/contacts" , protectedRoute  , async (req,res) => { // PROTECTED ROUTE
           SentRequest: [],
           ReceiveRequest: [],
           BlockedContacts: [],
-          BlockedBy: []
+          BlockedBy: [],
+          Groups: []
         });
       }
 });

@@ -26,6 +26,10 @@ const friendsSchema = mongoose.Schema({
     BlockedBy : [{
         type: mongoose.Schema.Types.ObjectId , 
         ref : "users" 
+    }],
+    Groups : [{
+        type : mongoose.Schema.Types.ObjectId,
+        ref : "groups"
     }]
 });
 

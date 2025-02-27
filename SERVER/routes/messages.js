@@ -2,6 +2,7 @@ const express = require("express") ;
 const protectedRoute = require("../middleware/protectedRoute");
 const chatModel = require("../models/chatsModel");
 const messageModel = require("../models/messageModel");
+const groupModel = require("../models/groupModel");
 const message = express.Router() ; 
 
 
@@ -9,19 +10,24 @@ const message = express.Router() ;
 
 // CHATS : 
 message.post("/get", protectedRoute ,async (req,res)=>{ // PROTECTED ROUTE ELSE RETURN TO AUTH PAGE
-    const {user_id,friend_id} = req.body ; 
+    const {user_id,friend_id,isGroup} = req.body ; // also receive that is it from group or not if from group then search in groupModel
     
-    console.log(friend_id ," ", user_id) ;
-    // Convert IDs to ObjectId to match MongoDB format
+    console.log(friend_id ," ", user_id) ; // if isGroup then friend id will represent the group id
+    
 
     try {
-        // let chatID = {};
-        let chatId = await chatModel.findOne({
-            $or: [
-                { senderId: user_id, receiverId: friend_id },
-                { senderId: friend_id, receiverId: user_id }
-            ]
-        });
+        let chatId = {};
+        if(isGroup) { // true 
+            chatId = await chatModel.findOne({ receiverId: friend_id });
+        }
+        else{
+            chatId = await chatModel.findOne({
+                $or: [
+                    { senderId: user_id, receiverId: friend_id },
+                    { senderId: friend_id, receiverId: user_id }
+                ]
+            });
+        }
         console.log(chatId) ; 
         if(!chatId) {
             res.json({boolean : true , message: "No chats present here !" , array : []}) ; 

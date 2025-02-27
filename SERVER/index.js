@@ -13,6 +13,8 @@ const {createServer} = require("http") ;
 const chatModel = require("./models/chatsModel");
 const messageModel = require("./models/messageModel");
 const friendsModel = require("./models/friendsModel");
+const { default: mongoose } = require("mongoose");
+const groupModel = require("./models/groupModel");
 
 app.use(express.urlencoded({extended:false})) ; 
 app.use(express.json()) ; 
@@ -27,14 +29,20 @@ app.use('/messages',message) ;
 
 // SEND MESSAGE
 const addMessageToDb = async (data) => {
-    const {userdetails , friend_data , message} = data ; 
+    const {userdetails , friend_data , message , isGroup } = data ; 
     try {
-        let chat = await chatModel.findOne({
-            $or: [
-                { senderId: userdetails._id, receiverId: friend_data._id },
-                { senderId: friend_data._id, receiverId: userdetails._id }
-            ]
-        });
+        let chat = {} 
+        if(isGroup) { // if its a group
+            chat = await chatModel.findOne({ receiverId: friend_data._id });
+        }
+        else {
+            chat = await chatModel.findOne({
+                $or: [
+                    { senderId: userdetails._id, receiverId: friend_data._id },
+                    { senderId: friend_data._id, receiverId: userdetails._id }
+                ]
+            });
+        }
         
         if(!chat) {
             chat = await chatModel.create({
@@ -283,6 +291,36 @@ const UnBlockRequest = async (data) => {
 };
 
 
+// CREATE GROUP  
+const Create_Group = async (data) => {  // {admin , filteredMembers , creatingGroupName}
+    const {admin , filteredMembers , creatingGroupName} = data ; 
+    try {
+        const newGroup = await groupModel.create({
+            image : "https://cdn-icons-png.flaticon.com/512/8443/8443368.png",
+            name : creatingGroupName , 
+            admin : admin , 
+            participants : filteredMembers ,
+            blocked_members : []
+        }) ; 
+        await newGroup.save() ; 
+        for(let i = 0 ; i < filteredMembers.length ; i++) { // also append the group id to all the members !
+            const member_obj = await friendsModel.findOne({user_id : filteredMembers[i]}) ; 
+            if(member_obj) { // i.e object found
+                member_obj.Groups.push(newGroup._id) ; 
+            }
+            await member_obj.save() ; 
+        }
+
+        return {boolean : true , newGroup} ; 
+    } catch (error) {
+        console.log("Error while saving the group !") ; 
+        return {boolean : false }
+    }
+};
+
+
+
+
 const server = createServer(app) ; 
 const io = new Server(server,{
     cors : {
@@ -301,16 +339,26 @@ io.on("connection",(socket)=>{
     });
 
 
-    // SEND AND RECEIVE MESSAGE  
+    // SEND AND RECEIVE MESSAGE  // ALSO FETCH HERE THAT ARE WE SENDING THIS TO A USER OR A GOURP ? 
     socket.on("message",(data) => { //data => {friendSocketId,friend_data,message,userDetails} // userDetails=> {_id,name,etc...} , friend_data => {_id,name,etc .....}
-        console.log(data.friendSocketId , data.friend_data._id, data.message , data.userdetails._id) ; 
+        console.log(data.friendSocketId , data.friend_data._id, data.message , data.userdetails._id , data.isGroup) ; 
         if(data.friendSocketId != "") {
             addMessageToDb(data) ; 
-            io.to(data.friendSocketId).emit("receive_messages",data) ; 
+            if(!data.isGroup) {
+                io.to(data.friendSocketId).emit("receive_messages",data) ; 
+            }
+            else {
+                // emit IN CASE OF GROUPS IS PENDING
+            }
         }
         else{
             addMessageToDb(data) ; 
-            // when the user will get online he is going to fetch data 
+            if(!data.isGroup) {
+                // user will automatically get message when user will come back online
+            }
+            else {
+                // emit IN CASE OF GROUPS IS PENDING
+            }
         }
     });
 
@@ -491,6 +539,29 @@ io.on("connection",(socket)=>{
                 // do not emit 
             }
         }      
+    });
+
+
+    // CREATE GROUP 
+    socket.on("CreateGroup", async (data) => { // {admin , filteredMembers , creatingGroupName}
+        console.log(`Group Created By : ${data.admin} members : ${data.filteredMembers} , Name : ${data.creatingGroupName} Image : default in schema`) ; 
+        const obj = await Create_Group(data) ; // {boolean : true , newGroup}
+        if(obj.boolean) {
+            for(let i = 0 ; i < data.filteredMembers.length ; i++) {
+                const memberId = data.filteredMembers[i] ; 
+                const socketId = userSocketMap[memberId] ; 
+                if(socketId) {
+                    console.log("Emitting new Group" , obj.newGroup) ; 
+                    io.to(socketId).emit("Group_Created", obj.newGroup) ; 
+                }
+                else{
+                    // do not emit just store it !
+                }
+            }
+        }
+        else{
+            // do not emit because internal server error occured ! while creating group !
+        }
     });
 
     // DISCONNECT

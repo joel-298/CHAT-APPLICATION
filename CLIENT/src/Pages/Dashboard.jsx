@@ -3,7 +3,7 @@ import axios from "axios" ;
 import {io} from "socket.io-client"
 import { useNavigate } from 'react-router-dom';
 
-//CONTACTS
+
 
 
 
@@ -21,6 +21,8 @@ const Dashboard = () => {
         setReceiveRequest(response.data.ReceiveRequest) ; 
         setBlockedContacts(response.data.BlockedContacts);
         setBlockedBy(response.data.BlockedBy);
+        setGroups(response.data.Groups) ; 
+        console.log(response.data.Groups) ; // console
       }
       else{
         console.log("User array return false") ;
@@ -41,6 +43,7 @@ const Dashboard = () => {
         if(response.data.boolean) { //  logged in 
           setUserDetails(response.data.user) ; 
           functionContacts(response.data.user._id) ; // CHECK POINT 4 : CONTACTS 
+          // ALSO FETCH CHATARRAY DASHBOARD
           // 1) Emit only after token verification
           socket.emit("user_online", response.data.user._id);       // CHECK POINT 1
           setMySocketId(socket.id) ; 
@@ -59,8 +62,15 @@ const Dashboard = () => {
           // 4) RECEIVE MESSAGES 
           socket.on("receive_messages", (data) => {
             console.log(`FROM : ${data.userdetails.name} & its id : ${data.userdetails._id}, SOCKET ID :${data.friendSocketId} , Message : ${data.message}`);
+
+            // -------------------------------------------CHAT BAR LOGIC IGNORE FOR NOW --------------------------------------------------------------- : 
+            // if chat does not exists and other user sends me message : i.e FROM : _id not found in chat array 
+              // push the new object in chatArray of other User !
+            // Run the sort function of chatArray Dashboard based on latest message time : 
+            // ---------------------------------------------------------------------------------------------------------------------------------------- :
+
             // in here if data.userdetails._id == friend_data._id then append that message to chat array
-            if(data.userdetails._id == friendIdRef.current) { // BUG HERE 
+            if(data.userdetails._id == friendIdRef.current) { 
               setChatsArray((chats)=>[...chats,{
                 senderId : data.userdetails._id ,
                 text : data.message , 
@@ -71,11 +81,11 @@ const Dashboard = () => {
           // 5) SEND REQUEST 
           socket.on("send_request", (data) => {
             console.log("Send request data",data) ; 
-            setSentRequest(data); // not here when im printing this array of sentRequest im just seeing map and rest values of ele.name , ele.image is not being seen and same as below this function
+            setSentRequest(data);                                                       
           });
           // 6) RECEIVE REQUEST 
           socket.on("receive_request", (data) => {
-            console.log("receive request data",data) // same as above
+            console.log("receive request data",data)
             setReceiveRequest(data) ;             
           }); 
           // 7) ACCEPT REQUEST 
@@ -128,6 +138,12 @@ const Dashboard = () => {
           socket.on("unblocked_by_request",(data)=>{
             setBlockedBy(data) ; 
           });
+
+          // 19) Receiver function in update Groups !
+          socket.on("Group_Created", (data) => { 
+            setGroups((prevGroups)=>[...prevGroups,data]) ; // add a new Group too  
+            console.log(Groups) ; 
+          });
         }
         else{
           navigate('/') ;
@@ -144,19 +160,19 @@ const Dashboard = () => {
   },[socket]);
 
   // SEARCH
-  const [MySocketId,setMySocketId] = useState("") ;             // USER SOCKET ID : 
-  const [userdetails,setUserDetails] = useState({}) ;           // USER DETAILS
-  const [search_input,setSearchInput] = useState('') ;          // SEARCH INPUT
-  const [usersArray,setUsersArray] = useState([]) ;             // search input user Array
-  const [onlineUsers, setOnlineUsers] = useState({});           // userSocketMap : initially empty
+  const [MySocketId,setMySocketId] = useState("") ;                                // USER SOCKET ID : 
+  const [userdetails,setUserDetails] = useState({}) ;                              // USER DETAILS
+  const [search_input,setSearchInput] = useState('') ;                             // SEARCH INPUT
+  const [usersArray,setUsersArray] = useState([]) ;                                // search input user Array
+  const [onlineUsers, setOnlineUsers] = useState({});                              // userSocketMap : initially empty
   const [serverErrorLoadingChats,setServerError] = useState("") ; 
   const latestQuery = useRef('');
   let searchTimeout;
 
-  const handleSearchInput = (e) => {     // CHECK POINT 5
+  const handleSearchInput = (e) => {                                               // CHECK POINT 5
     const value = e.target.value;
     setSearchInput(value);
-    latestQuery.current = value; // Update the latest query immediately
+    latestQuery.current = value;                                                  // Update the latest query immediately
     clearTimeout(searchTimeout);
     if (value) {
       searchTimeout = setTimeout(async () => {
@@ -165,8 +181,7 @@ const Dashboard = () => {
           if (value === latestQuery.current) {
             let filteredUsers = response.data.boolean ? response.data.array : [];
 
-            // **Filter out users present in either BlockedContacts OR BlockedBy**
-            filteredUsers = filteredUsers.filter(
+            filteredUsers = filteredUsers.filter(                                  // **Filter out users present in either BlockedContacts OR BlockedBy**
                 user => 
                     !BlockedContacts.some(req => req._id === user._id) && 
                     !BlockedBy.some(req => req._id === user._id)
@@ -202,14 +217,14 @@ const Dashboard = () => {
   } 
 
   // SET FRIEND DATA AND SOCKET ID IF ONLINE
-  const [friend_data,setFriendData] = useState({_id:"",image:"https://th.bing.com/th/id/OIP.tuHNM-LQLhwdfR01L2x-mQAAAA?w=400&h=400&rs=1&pid=ImgDetMain",name:"Avatar",email:""}) ;
+  const [friend_data,setFriendData] = useState({_id:"",image:"https://th.bing.com/th/id/OIP.tuHNM-LQLhwdfR01L2x-mQAAAA?w=400&h=400&rs=1&pid=ImgDetMain",name:"Avatar"}) ;
   const [friendSocketId,setFriendSocketId] = useState("") ;
   const friendIdRef = useRef(friend_data._id);                              // CHECKPOINT 2 
   useEffect(() => {
     friendIdRef.current = friend_data._id;
   }, [friend_data._id]);
   
-  const handleFriendData = (id,triggeredFrom) => {
+  const handleFriendData = (id,triggeredFrom , isGroup) => {
     let selectedFriend ;
     if(triggeredFrom == "search") {
       selectedFriend = usersArray.find((user) => user._id === id);
@@ -217,13 +232,13 @@ const Dashboard = () => {
     else if(triggeredFrom == "contacts"){
       selectedFriend = userContacts.find((user) => user._id === id);
     }
-    else{
-      selectedFriend = ReceiveRequest.find((user) => user._id === id);
+    else{                                                                        // TRIGGERED FROM GROUPS 
+      selectedFriend = Groups.find((user) => user._id === id);                  // set group id as friend id
     }
     if (selectedFriend) {
       setFriendData(selectedFriend);
       console.log(`SELECTED ID OF ELEMENT ${selectedFriend._id}`) ; 
-      const friend = onlineUsers[selectedFriend._id] ; 
+      const friend = onlineUsers[selectedFriend._id] ;                          // in case of selectedFriend._id = Group._id socket will always be ""
       if(friend) {
         console.log(`${selectedFriend.name} ONLINE AND ITS SOCKET ID : ${friend}`) ;
         setFriendSocketId(friend) ;
@@ -233,74 +248,73 @@ const Dashboard = () => {
         setFriendSocketId("") ;
       }
 
-      // fetch their chats weather they are online or not ! 
-      try {
+      
+      try {                                                                   // fetch their chats weather they are online or not ! 
         const fetchChats = async () => {
-          const response = await axios.post('http://localhost:4000/messages/get', {user_id : userdetails._id, friend_id : selectedFriend._id} , {withCredentials : true}) ; 
+          console.log(isGroup) ;  
+          const response = await axios.post('http://localhost:4000/messages/get', {user_id : userdetails._id, friend_id : selectedFriend._id , isGroup : isGroup} , {withCredentials : true}) ; 
           if(response.data.boolean) {
             console.log(response.data.array) ; 
             setChatsArray(response.data.array) ; 
-            setServerError(response.data.message) ; // this useState is for displaying like No chats present here !
+            setServerError(response.data.message) ;                           // this useState is for displaying like No chats present here !
           }
           else{
             alert(response.data.message) ; 
-            navigate('/') ; // navigate to auth page for example if cookie is not verified
+            navigate('/') ;                                                   // navigate to auth page for example if cookie is not verified
           }
         };
         fetchChats() ; 
       } catch (error) {
         console.log("ERROR WHILE FETCHING CHATS !", error) ; 
         alert("Request time out !") ; 
-        navigate('/') ; // navigate to auth page for example if cookie is not verified
+        navigate('/') ;                                                       // navigate to auth page for example if cookie is not verified
       }
     } 
   };
 
   // MESSAGE AND CHAT
-  const [message,setMessage] = useState('') ;                // MESSAGE 
-  const [chats,setChatsArray] = useState([]) ;               // CHATS ARRAY   // CHECK POINT 3
+  const [message,setMessage] = useState('') ;                                 // MESSAGE 
+  const [chats,setChatsArray] = useState([]) ;                                // CHATS ARRAY   // CHECK POINT 3
   const handleMessage = (e) => {
     setMessage(e.target.value) ;
   }
   const handleSent = async (e) => {
     e.preventDefault() ; 
     console.log(`TO : ${friendSocketId} , FRIEND ID : ${friend_data._id}: message : ${message} `) ; 
-    // append it to chat array too only If selected friend is != userId
-    if(userdetails._id != friendIdRef.current) {
+
+    // IN HERE : 
+    // if chat does not exists and other user sends me message : i.e FROM : _id not found in chat array 
+      // push the new object in chatArray of other User !
+    // Run the sort function of chatArray Dashboard based on latest message time : 
+  
+    
+    if(userdetails._id != friendIdRef.current) {                      // append it to chat array too only If selected friend is != userId
       setChatsArray((chats)=>[...chats,{
         senderId : userdetails._id ,
         text : message , 
         createdAt : Date.now() 
       }]);
     }
-    socket.emit("message",{friendSocketId,friend_data,message,userdetails}) ; 
+    socket.emit("message",{friendSocketId,friend_data,message,userdetails,isGroup : isGroupSelected}) ; 
     setMessage("") ; 
   };
 
   // CONNECTIONS : 
-  const [userContacts,setUserContacts] = useState([]) ;         // USER CONTACTS ; 
-  {/* IF these useStates were only Array then we could have accessed these as {var[ele._id] ? "display_none" : ''} in css 
-    But since they are array of objects therefore we are going with this syntax : 
-    SentRequest.some(req => req._id === ele._id) */}
-  const [SentRequest,setSentRequest] = useState([]) ;          // USER SENT CONNECTION REQUEST ARRAY
-  const [ReceiveRequest,setReceiveRequest] = useState([]) // user receiving request array 
-  const [BlockedContacts,setBlockedContacts] = useState([]) ;   // USER HAS BLOCKED THESE CONTACTS ARRAY
-  const [BlockedBy,setBlockedBy] = useState([]) ;     // user has been blocked by these people
-  const [blockId ,setBlockId] = useState("")                    // Selected Id for blocking user 
+  const [userContacts,setUserContacts] = useState([]) ;               // USER CONTACTS ; 
+                                                                      {/* IF these useStates were only Array then we could have accessed these as {var[ele._id] ? "display_none" : ''} in css 
+                                                                        But since they are array of objects therefore we are going with this syntax : 
+                                                                        SentRequest.some(req => req._id === ele._id) */}
+  const [SentRequest,setSentRequest] = useState([]) ;                 // USER SENT CONNECTION REQUEST ARRAY
+  const [ReceiveRequest,setReceiveRequest] = useState([])             // user receiving request array 
+  const [BlockedContacts,setBlockedContacts] = useState([]) ;         // USER HAS BLOCKED THESE CONTACTS ARRAY
+  const [BlockedBy,setBlockedBy] = useState([]) ;                     // user has been blocked by these people
+  const [blockId ,setBlockId] = useState("")                          // Selected Id for blocking user 
   // BLOCK 
     const handleBlock = (id) => {
       setBlockId(id) ; 
     }
     const handleBlockYes = () => {
       console.log("ID FOR BLOCKING : ", blockId) ; 
-      // use socket io 
-      // emit id to backend
-      // update user array of blocked : add this id there
-      // also check if this id is present in contacts || SentRequest || ReceiveRequest then remove it 
-      // also add user id to persons blocked by array 
-      // also check is user id is present in contacts || sendRequestarray || ReceiveRequest then remove it 
-      
-      // ALSO CHECK IF THEIR CHATS EXISTS AND REMOVE FROM CHAT AND MESSAGE BECAUSE OF LIMITED RESOURCES ... 
       socket.emit("Block", {friend_id : blockId , user_id : userdetails._id , userSocketId : MySocketId , friendSocketId : onlineUsers[blockId] || null}) ; 
       setBlockId("") ; 
     }
@@ -317,47 +331,26 @@ const Dashboard = () => {
   // SEND REQUEST
     const Request = (id) => { // receive id of that user
       console.log("CONNECTION REQUEST TO : ", id) ; 
-      // 1st add in array above 
-      // use socket io to send req. in backend real time 
-      // receive in backend and update this user sentRequest array in backend and other person receiveRequest
-      // emit from backend and receive in useEffect and update receive request array
       socket.emit("addRequest",{friend_id : id , user_id : userdetails._id , userSocketId : MySocketId , friendSocketId :  onlineUsers[id] || null }) ;  
-      // here online users is a map of key value paris of user_id and their socket id thereofre if friend id is present in map return the socket value in her as a value else make the value ""
     }
   // ACCEPT
     const Accept = (id) => { // receive id of that user
       console.log("ACCEPTING REQUEST TO : ", id) ; 
-      // io.emit id of that user 
-      // in backend update : 
-      //       (i) add person in contacts of user and (ii) visa versa 
-      //        remove person from user's receive request array 
-      //        remove user from persons sent request array
-      // emit from backend these updated array : contacts , sentRequest , receive request 
-      // update these three arrays in frontend
       socket.emit("Accept", {friend_id : id , user_id : userdetails._id , userSocketId : MySocketId , friendSocketId : onlineUsers[id] || null });
-      // here online users is a map of key value paris of user_id and their socket id thereofre if friend id is present in map return the socket value in her as a value else make the value ""
     }
   // CANCEL REQUEST
     const cancelRequest = (id) => { // receive id of that user 
       console.log("CANCEL REQUEST TO : ", id) ; 
-      // 1st remove from request array above
-      // use socket io to send req.in backend real time 
-      // receive in backend and update this user sendRequest array in backend and other person receiveRequest 
-      // emit from backend and receive in useEffect and update receive request array 
       socket.emit("CancelRequest", {friend_id : id , user_id : userdetails._id , userSocketId : MySocketId , friendSocketId : onlineUsers[id] || null }) ;
     }
   // REJECT 
     const Reject = (id) => {
       console.log("REJECT REQUEST : ", id); 
-      // remove from user receive request
-      // remove from other person sent request array
       socket.emit("Reject", {friend_id : id , user_id : userdetails._id , userSocketId : MySocketId , friendSocketId : onlineUsers[id] || null}) ; 
     }
   // REMOVE FRIEND 
   const Unfollow = (id) => {
     console.log("UNFOLLOW : ",id) ; 
-    // update the contacts array from backend of user and other friend too 
-    // also delete chats of both of them optional !
     socket.emit("Unfollow",{friend_id : id , user_id : userdetails._id , userSocketId : MySocketId , friendSocketId : onlineUsers[id] || null}) ;
   }
   // DELETE CHATS 
@@ -381,6 +374,66 @@ const Dashboard = () => {
       !BlockedBy.some(req => req._id == _id)
     )]);
     }, [BlockedContacts, BlockedBy]);
+
+
+
+
+
+
+    // CREATE GROUPS 
+    const [Groups,setGroups] = useState([]) ;                           // full array of groups : {image , name , participants , admin , blocked members}
+
+    const [addgroup,setaddGroup] = useState(false) ;                  // FOR CREATING GROUPS !
+    const [GroupImage,setGroupImage] = useState("") ;                 // NEW GROUP IMAGE !
+    const [creatingGroupName,setCreatingGroupName] = useState("") ;   // NEW GROUP NAME !
+    const [members,setMembers] = useState([]) ;                       // ADD MEMBERS TO YOUR NEWLY CREATED GROUP !
+
+    const [selectedGroupId,setSelectedGroupId] = useState("") ;       // ID FOR EDITING GROUP ONLY ! // add more members remove members etc etc 
+    const [BlockedArrayGroup,setBlockedArrayGroup] = useState([]) ;   // will contain blocked members of that group 
+    const [Kick, setKick] = useState([]) ;                            // Do not need a db in backend , just pass this array to kick someone from the group !
+
+    const handleCheckboxChange = (_id) => {
+      setMembers((prevMembers) => {
+        const isMemberAlreadyAdded = prevMembers.some((member) => member === _id);
+        if (isMemberAlreadyAdded) {
+          return prevMembers.filter((member) => member !== _id);
+        } else {
+          return [...prevMembers, _id];
+        }
+      });
+    };
+    const CreateGroup = () => {
+      console.log("Selected Members : ", members) ; 
+      // while creating group ! : u are going to filter blocked contacts and blocked by contacts : 
+      // BUT THEY CAN JOIN THROUGH GROUP INVITATION ! 
+      // AND THEY CAN ALSO CHAT AND U CAN SEE THEIR CHATS TOO AND SEND CHATS TOO ! 
+      // UNTIL AND UNLESS ADMIN BANS THEM FROM GROUP ! 
+      // BANING MENS REMOVING THAT PERSON FROM THE GROUP ALONG WITH THAT PERSON CANNOT JOIN THE GROUP EVEN THROUGH LINK BECAUSE THAT PERSON IS IN BLOCKED ARRAY OF GROUP
+      let filteredMembers = members.filter((memberId) => {
+        const isBlockedContact = BlockedContacts.some((blocked) => blocked._id === memberId);
+        const isBlockedBy = BlockedBy.some((blocked) => blocked._id === memberId);
+      // Include the member only if they are NOT in BlockedContacts or BlockedBy
+      return !isBlockedContact && !isBlockedBy;
+    });
+    
+    if(creatingGroupName == "" || members.length < 1) {
+      setaddGroup(false) ;
+      setMembers([]) ;
+      setCreatingGroupName("") ; 
+      alert("Cannot create group please complete the necessary credentials !") ; 
+      return ;
+    }
+    
+      filteredMembers = [...filteredMembers,userdetails._id] ; // by default also add user in that group 
+      console.log("Filtered Members (after removing blocked contacts):",filteredMembers);
+      const admin = userdetails._id ; 
+      console.log("Admin : ",admin) ; 
+      socket.emit("CreateGroup", {admin , filteredMembers , creatingGroupName}) ; // in real time : group name , image , members , admin 
+      setaddGroup(false) ;
+      setMembers([]) ;
+      setCreatingGroupName("") ; 
+  
+  }
 
   return (
     <>
@@ -414,7 +467,7 @@ const Dashboard = () => {
                   usersArray.map((ele) => (
                       <div key={ele._id} className={`people ${BlockedContacts.some(req => req._id == ele._id) ? 'display_none' : ''} ${BlockedBy.some(req => req._id == ele._id) ? 'display_none' : ""}`}> {/* If a person is blocked we will not display that person && if the user is blocked by someone we will not display that person too*/}
                         <div className='user-card'> 
-                          <div onClick={()=>{handleFriendData(ele._id,"search")}} className='box1'>
+                          <div onClick={()=>{handleFriendData(ele._id,"search",false) }} className='box1'>
                             <img src={ele.image} alt='User Avatar' />
                             <p>{ele.name}</p>
                             <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
@@ -456,7 +509,7 @@ const Dashboard = () => {
           userContacts.map((ele) => (
               <div key={ele._id} className={`contacts_section ${BlockedContacts.some(req => req._id == ele._id) ? 'display_none' : ''} ${BlockedBy.some(req => req._id == ele._id) ? 'display_none' : ""}`} > {/* If a person is blocked we will not display that person && if user is blocked by someOne we will not diplay thet person too*/}
                 <div className='user-card'> 
-                  <div onClick={()=>{handleFriendData(ele._id,"contacts")}} className='box1'>
+                  <div onClick={()=>{handleFriendData(ele._id,"contacts",false) }} className='box1'>
                     <img src={ele.image} alt='User Avatar' />
                     <p>{ele.name}</p>
                     <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
@@ -493,14 +546,59 @@ const Dashboard = () => {
           <p className={`no_result_found ${userContacts.length === 0 ? '' : 'display_none'} `}>No results found</p>
       )}
     </div>
-    </div> 
+    </div><br />
+
+    <div className='Groups'>
+      <h2>Groups</h2>
+      <div className={`groups_dashboard ${addgroup == true ? "disaply_none" : ""}`}> 
+        <button onClick={()=>{setaddGroup(true)}}>Add</button>
+        <h3>CREATE GROUP !</h3>
+      </div>
+
+      <div className={`group_form ${addgroup == false? "display_none" : ""}`}>
+        <label>
+          <h2>Group Name :&nbsp;</h2>
+          <input type="text" value={creatingGroupName} onChange={(e)=>{setCreatingGroupName(e.target.value)}} />
+        </label>
+        <button onClick={CreateGroup}>Create Group</button>
+        <button onClick={()=>{setaddGroup(false) , setMembers([]) , setCreatingGroupName("") }}>Cancel</button>
+
+        {userContacts.map((ele,index)=>(
+          <div className={`box1 ${BlockedContacts.some(req => req._id == ele._id) ? 'display_none' : ''} ${BlockedBy.some(req => req._id == ele._id) ? 'display_none' : ""} ${userdetails._id == ele._id ? "display_none" : ""}`} key={index}>
+            <input  type="checkbox" onChange={() => handleCheckboxChange(ele._id)} checked={members.includes(ele._id)} ></input>              {/*check if member include that id*/}
+            <img src={ele.image} alt='User Avatar' />
+            <p>{ele.name}</p>
+            <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
+          </div>
+        ))}
+      </div>
+      
+      {/*DISPLAYING ALL THE GROUPS ! onclick setGroupSelected(true) */}
+      {Groups.length > 0 ? (
+        Groups.map((ele,index) => ( // ----------------> (2) 
+          <div key={index} onClick={()=>{handleFriendData(ele._id,"groups",true) }}>
+            <img src={ele.image}></img>
+            <h2>{ele.name}</h2>
+            <p>{ele.participants}</p>
+          </div>
+        ))
+      ) : ( 
+        <div>
+          <h2>No Groups present !</h2>
+        </div>
+      )} 
+      
+
+    </div><br />
+
+
     <div className='dashboard'>
       <h2>REQUESTS</h2>
       <div className='array_div'>
         {ReceiveRequest.length > 0 ? (
           ReceiveRequest.map((ele,index) => (
               <div key={index} className={`user-card contacts_section ${BlockedContacts.some(req => req._id == ele._id) ? 'display_none' : ''} ${BlockedBy.some(req => req._id == ele._id) ? 'display_none' : ""}`} > {/* If a person is blocked we will not display that person && if user is blocked by someOne we will not diplay thet person too*/}
-                  <div className='box1' onClick={()=>{handleFriendData(ele._id,"requests")}}>
+                  <div className='box1'>
                     <img src={ele.image} alt='User Avatar' />
                     <p>{ele.name}</p>
                     <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 

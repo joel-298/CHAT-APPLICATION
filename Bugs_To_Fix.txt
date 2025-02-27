@@ -11,8 +11,9 @@ In Connect , Request , Block , Unblock , Accept , Reject , BlockedBy :
 When someone creates group 
 this is going to be 1Object and its chat Object is going to be null :  
 GROUP SCHEMA : 
+    GROUP IMAGE : 
     GROUP ID : through which anyone can join
-    CONTAINS PARTICIPANTS : 
+    CONTAINS PARTICIPANTS : array of users !
     ADMIN : authority to kick or add or delete Group !
     BLOCKED MEMBERS : they cannot join again 
 
