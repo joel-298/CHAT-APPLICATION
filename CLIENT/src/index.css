@@ -352,6 +352,138 @@ p , button {
   justify-content: center;
   display: none;
 }
+
+
+
+
+
+.Groups {
+  background-color: rgb(74, 74, 74);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  margin: 10px 0px;
+}
+.Groups h2 {
+  font-weight: 500;
+  font-size: 40px;
+  background: linear-gradient(to bottom right,rgb(66, 1, 103),rgb(0, 149, 255));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin: 0px;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+.groups_dashboard {
+  background-color: rgba(41, 45, 48, 0.837);
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+  margin: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  column-gap: 30px;
+}
+.group_form{
+  background-color: rgba(41, 45, 48, 0.837);
+  margin: 5px;
+  margin-top: -5px;
+  display: flex;
+  flex-direction: column;
+
+  border-bottom-right-radius: 10px;
+  border-bottom-left-radius: 10px;
+}
+.group_form label {
+  display: flex;
+  padding-left: 5%;
+  align-items: center;
+  column-gap: 10px;
+}
+
+.group_form label p {
+  display: flex;
+  font-size: 20px;
+  width: 35%;
+}
+.group_form label input {
+  display: flex;
+  height: 30px;
+  width: 53%;
+  border-radius: 10px;
+  border: 0px ;
+  padding: 0px 10px;
+}
+.group_form label {
+  background-color: transparent;
+}
+.group_buttons{
+  display: flex;
+  justify-content: center;
+  column-gap: 15px;
+}
+.group_buttons button{ 
+  width: fit-content;
+}
+.Select_Contacts {
+  /* background-color: blue; */
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  row-gap: 10px;
+}
+
+.Select_Contacts input {
+  height : 25px ; 
+  width: 25px;
+}
+.Select_Contacts .box1{
+  background-color: rgb(77, 74, 74);
+  border-radius: 10px;
+  padding-left: 20px;
+  padding: 10px;
+  width: auto;
+}
+.Select_Contacts img {
+  height:67px;
+  width: 67px;
+}
+
+
+
+
+.group_chat {
+  /* background-color: blue; */
+  display: flex ; 
+  flex-direction: column;
+}
+.group_chat .group_card {
+  background-color: rgb(36, 36, 36);
+  display: flex;
+  margin: 5px;
+  border-radius: 10px;
+  padding: 10px;
+  height: auto;
+  width: auto;
+  column-gap: 15px;
+}
+.group_card img {
+  height: 70px;
+  width: 70px;
+}
+.group_card p {
+  font-size: 20px;
+  background-color: transparent;
+}
+.group_card:hover {
+  cursor: pointer;
+  transition: 0.3s;
+  background-color: rgba(49, 49, 49, 0.702);
+}
+
+
 .display_none {
   display: none; 
 }

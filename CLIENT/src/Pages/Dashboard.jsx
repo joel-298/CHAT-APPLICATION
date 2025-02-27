@@ -557,37 +557,44 @@ const Dashboard = () => {
 
       <div className={`group_form ${addgroup == false? "display_none" : ""}`}>
         <label>
-          <h2>Group Name :&nbsp;</h2>
+          <p>Group Name :&nbsp;</p>
           <input type="text" value={creatingGroupName} onChange={(e)=>{setCreatingGroupName(e.target.value)}} />
         </label>
-        <button onClick={CreateGroup}>Create Group</button>
-        <button onClick={()=>{setaddGroup(false) , setMembers([]) , setCreatingGroupName("") }}>Cancel</button>
+        <div className='group_buttons'>
+          <button onClick={CreateGroup}>Create Group</button>
+          <button onClick={()=>{setaddGroup(false) , setMembers([]) , setCreatingGroupName("") }}>Cancel</button>
+        </div>
 
-        {userContacts.map((ele,index)=>(
-          <div className={`box1 ${BlockedContacts.some(req => req._id == ele._id) ? 'display_none' : ''} ${BlockedBy.some(req => req._id == ele._id) ? 'display_none' : ""} ${userdetails._id == ele._id ? "display_none" : ""}`} key={index}>
-            <input  type="checkbox" onChange={() => handleCheckboxChange(ele._id)} checked={members.includes(ele._id)} ></input>              {/*check if member include that id*/}
-            <img src={ele.image} alt='User Avatar' />
-            <p>{ele.name}</p>
-            <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
-          </div>
-        ))}
+        <div className='Select_Contacts'>
+          {userContacts.map((ele,index)=>(
+            <div className={`box1 ${BlockedContacts.some(req => req._id == ele._id) ? 'display_none' : ''} ${BlockedBy.some(req => req._id == ele._id) ? 'display_none' : ""} ${userdetails._id == ele._id ? "display_none" : ""}`} key={index}>
+              <input  type="checkbox" onChange={() => handleCheckboxChange(ele._id)} checked={members.includes(ele._id)} ></input>              {/*check if member include that id*/}
+              <img src={ele.image} alt='User Avatar' />
+              <p>{ele.name}</p>
+              <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
+            </div>
+          ))}
+        </div>
       </div>
       
       {/*DISPLAYING ALL THE GROUPS ! onclick setGroupSelected(true) */}
-      {Groups.length > 0 ? (
-        Groups.map((ele,index) => ( // ----------------> (2) 
-          <div key={index} onClick={()=>{handleFriendData(ele._id,"groups",true) }}>
-            <img src={ele.image}></img>
-            <h2>{ele.name}</h2>
-            <p>{ele.participants}</p>
+      <div className='group_chat'>
+        {Groups.length > 0 ? (
+          Groups.map((ele,index) => ( // ----------------> (2) 
+            <div key={index} className='group_card' onClick={()=>{handleFriendData(ele._id,"groups",true) }}>
+              <img src={ele.image}></img>
+              <p>{ele.name}</p>
+              {/* {ele.participants.map((i,index)=>(
+                <p>{i}</p>
+              ))} */}
+            </div>
+          ))
+        ) : ( 
+          <div>
+            <h2>No Groups present !</h2>
           </div>
-        ))
-      ) : ( 
-        <div>
-          <h2>No Groups present !</h2>
-        </div>
-      )} 
-      
+        )} 
+      </div>
 
     </div><br />
 
@@ -659,13 +666,14 @@ const Dashboard = () => {
         <div className='user-card friend'>
           <img src={friend_data.image} alt="" />
           <p>{friend_data.name}</p>
-          {/* <p>{friend_data._id}</p> */}
           <div className={`status ${onlineUsers[friend_data._id] ? 'online_status' : ''}`}></div>
           <button className={`${onlineUsers[friend_data._id] && userContacts.some(req => req._id == friend_data._id) && friend_data._id != userdetails._id ? '' : 'display_none'}`} >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-camera-video-fill" viewBox="0 0 16 16">
               <path d="M0 5a2 2 0 0 1 2-2h7.5a2 2 0 0 1 1.983 1.738l3.11-1.382A1 1 0 0 1 16 4.269v7.462a1 1 0 0 1-1.406.913l-3.111-1.382A2 2 0 0 1 9.5 13H2a2 2 0 0 1-2-2z"/>
             </svg>
           </button>
+          {/* write a funcitonality here that is its a group show an button to leave group 
+          if its admin show a button of delete group  */}
         </div>
         <div className='messages'>
           {chats.length > 0 ? (
