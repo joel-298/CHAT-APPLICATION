@@ -33,6 +33,7 @@ const addMessageToDb = async (data) => {
     try {
         let chat = {} 
         if(isGroup) { // if its a group
+            console.log("Group selected and its id ", friend_data._id) ; 
             chat = await chatModel.findOne({ receiverId: friend_data._id });
         }
         else {
@@ -318,6 +319,18 @@ const Create_Group = async (data) => {  // {admin , filteredMembers , creatingGr
     }
 };
 
+// LEAVE GROUP 
+const LeaveGroup = async (data) => { // {id,selectedGroupId}
+    // remove group id from friends model 
+    // remove users id from participants of this group 
+};
+
+const DeleteGroup = async (data) => { // {id,selectedGroupId,participants:} // we also need to participants 
+    // delete group from groups schema 
+    // remove its chats schema 
+    // make a loop on participants and 
+    // in participants.Groups remove the previously group id too 
+}
 
 
 
@@ -339,8 +352,8 @@ io.on("connection",(socket)=>{
     });
 
 
-    // SEND AND RECEIVE MESSAGE  // ALSO FETCH HERE THAT ARE WE SENDING THIS TO A USER OR A GOURP ? 
-    socket.on("message",(data) => { //data => {friendSocketId,friend_data,message,userDetails} // userDetails=> {_id,name,etc...} , friend_data => {_id,name,etc .....}
+    // SEND AND RECEIVE MESSAGE                                                                                             // ALSO FETCH HERE THAT ARE WE SENDING THIS TO A USER OR A GOURP ? 
+    socket.on("message",(data) => {                                                                                         //data => {friendSocketId,friend_data,message,userDetails} // userDetails=> {_id,name,etc...} , friend_data => {_id,name,etc .....} , members : [] , GroupId
         console.log(data.friendSocketId , data.friend_data._id, data.message , data.userdetails._id , data.isGroup) ; 
         if(data.friendSocketId != "") {
             addMessageToDb(data) ; 
@@ -348,7 +361,15 @@ io.on("connection",(socket)=>{
                 io.to(data.friendSocketId).emit("receive_messages",data) ; 
             }
             else {
-                // emit IN CASE OF GROUPS IS PENDING
+                for(let i = 0 ; i < data.members.length ; i++) {
+                    const SocketId = userSocketMap[data.members[i]] ; 
+                    if(SocketId && SocketId != userSocketMap[data.userdetails._id]) {
+                        io.to(SocketId).emit("receive_messages",data) ;                                                     // Ignore the senders id because its creating 2 entries !
+                    }
+                    else{
+                        // do not emit
+                    }
+                }
             }
         }
         else{
@@ -357,7 +378,15 @@ io.on("connection",(socket)=>{
                 // user will automatically get message when user will come back online
             }
             else {
-                // emit IN CASE OF GROUPS IS PENDING
+                for(let i = 0 ; i < data.members.length ; i++) {
+                    const SocketId = userSocketMap[data.members[i]] ; 
+                    if(SocketId && SocketId != userSocketMap[data.userdetails._id]) {
+                        io.to(SocketId).emit("receive_messages",data) ;                                                     // Ignore the senders id because its creating 2 entries !
+                    }
+                    else{
+                        // do not emit
+                    }
+                }
             }
         }
     });
@@ -563,6 +592,31 @@ io.on("connection",(socket)=>{
             // do not emit because internal server error occured ! while creating group !
         }
     });
+
+    // LEAVE GROUP 
+    socket.on("Leave:Group" , async (data) => { // {id,selectedGroupId}
+        console.log("Remove Person : ", data.id , "From GROUP !", data.selectedGroupId) ;
+        const obj = await LeaveGroup(data) ; 
+        if(obj.boolean) {
+            // removed successfully
+            // emit 
+        }
+        else {
+            // was not removed
+        }
+    }); 
+    // DELETE GROUP
+    socket.on("Delete:Group" , async (data) => { // {id,selectedGroupId}
+        console.log("Admin Id : ", data.id , "of GROUP !", data.selectedGroupId) ; 
+        const obj = await DeleteGroup(data) ; 
+        if(obj.boolean) {
+            // remove successfully   
+        }
+        else{
+            // was not removed 
+        }
+    });  
+
 
     // DISCONNECT
     socket.on("disconnect", () => {

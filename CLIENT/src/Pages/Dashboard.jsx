@@ -70,7 +70,8 @@ const Dashboard = () => {
             // ---------------------------------------------------------------------------------------------------------------------------------------- :
 
             // in here if data.userdetails._id == friend_data._id then append that message to chat array
-            if(data.userdetails._id == friendIdRef.current) { 
+            console.log(data.GroupId , selectedGroupId) ; // why this function down below is not working when ids are same ? 
+            if(data.userdetails._id == friendIdRef.current || data.GroupId == friendIdRef.current){ 
               setChatsArray((chats)=>[...chats,{
                 senderId : data.userdetails._id ,
                 text : data.message , 
@@ -228,12 +229,16 @@ const Dashboard = () => {
     let selectedFriend ;
     if(triggeredFrom == "search") {
       selectedFriend = usersArray.find((user) => user._id === id);
+      setIsGroupSelected(false) ; 
     }
     else if(triggeredFrom == "contacts"){
       selectedFriend = userContacts.find((user) => user._id === id);
+      setIsGroupSelected(false) ; 
     }
     else{                                                                        // TRIGGERED FROM GROUPS 
       selectedFriend = Groups.find((user) => user._id === id);                  // set group id as friend id
+      setIsGroupSelected(true) ; 
+      setSelectedGroupId(id) ; 
     }
     if (selectedFriend) {
       setFriendData(selectedFriend);
@@ -295,7 +300,7 @@ const Dashboard = () => {
         createdAt : Date.now() 
       }]);
     }
-    socket.emit("message",{friendSocketId,friend_data,message,userdetails,isGroup : isGroupSelected}) ; 
+    socket.emit("message",{friendSocketId,friend_data,message,userdetails,isGroup : isGroupSelected,members : selectedGroupId ? Groups.find(group => group._id === selectedGroupId)?.participants || []: [],  GroupId : isGroupSelected ? selectedGroupId : "" }) ; 
     setMessage("") ; 
   };
 
@@ -381,6 +386,7 @@ const Dashboard = () => {
 
 
     // CREATE GROUPS 
+    const [isGroupSelected,setIsGroupSelected] = useState(false) ;  
     const [Groups,setGroups] = useState([]) ;                           // full array of groups : {image , name , participants , admin , blocked members}
 
     const [addgroup,setaddGroup] = useState(false) ;                  // FOR CREATING GROUPS !
@@ -392,6 +398,7 @@ const Dashboard = () => {
     const [BlockedArrayGroup,setBlockedArrayGroup] = useState([]) ;   // will contain blocked members of that group 
     const [Kick, setKick] = useState([]) ;                            // Do not need a db in backend , just pass this array to kick someone from the group !
 
+    // ADDING AND REMOVING MEMBERS
     const handleCheckboxChange = (_id) => {
       setMembers((prevMembers) => {
         const isMemberAlreadyAdded = prevMembers.some((member) => member === _id);
@@ -402,6 +409,8 @@ const Dashboard = () => {
         }
       });
     };
+
+    // CREATING GROUP 
     const CreateGroup = () => {
       console.log("Selected Members : ", members) ; 
       // while creating group ! : u are going to filter blocked contacts and blocked by contacts : 
@@ -412,18 +421,16 @@ const Dashboard = () => {
       let filteredMembers = members.filter((memberId) => {
         const isBlockedContact = BlockedContacts.some((blocked) => blocked._id === memberId);
         const isBlockedBy = BlockedBy.some((blocked) => blocked._id === memberId);
-      // Include the member only if they are NOT in BlockedContacts or BlockedBy
-      return !isBlockedContact && !isBlockedBy;
-    });
-    
-    if(creatingGroupName == "" || members.length < 1) {
-      setaddGroup(false) ;
-      setMembers([]) ;
-      setCreatingGroupName("") ; 
-      alert("Cannot create group please complete the necessary credentials !") ; 
-      return ;
-    }
-    
+        // Include the member only if they are NOT in BlockedContacts or BlockedBy
+        return !isBlockedContact && !isBlockedBy;
+      });
+      if(creatingGroupName == "" || members.length < 1) {
+        setaddGroup(false) ;
+        setMembers([]) ;
+        setCreatingGroupName("") ; 
+        alert("Cannot create group please complete the necessary credentials !") ; 
+        return ;
+      }
       filteredMembers = [...filteredMembers,userdetails._id] ; // by default also add user in that group 
       console.log("Filtered Members (after removing blocked contacts):",filteredMembers);
       const admin = userdetails._id ; 
@@ -432,8 +439,18 @@ const Dashboard = () => {
       setaddGroup(false) ;
       setMembers([]) ;
       setCreatingGroupName("") ; 
-  
-  }
+    }
+
+    // LEAVING GROUP 
+    const LeaveGroup = (id) => {
+      console.log(id) ; 
+      socket.emit("Leave:Group", {id,selectedGroupId}) ; 
+    };
+    // DELETING WHOLE GROUP 
+    const DeleteGroup = (id) => {
+      console.log(id) ; 
+      socket.emit("Delete:Group", {id , selectedGroupId , participants: Groups.find((ele) => ele._id === selectedGroupId)?.participants || []}) ; 
+    }
 
   return (
     <>
@@ -674,6 +691,8 @@ const Dashboard = () => {
           </button>
           {/* write a funcitonality here that is its a group show an button to leave group 
           if its admin show a button of delete group  */}
+          <button className={`Leave_group ${isGroupSelected ? "" : "display_none"} ${Groups.some(i => i._id == selectedGroupId && userdetails._id == i.admin) ? "display_none" : ""}`} onClick={()=>{LeaveGroup(userdetails._id)}}>Leave</button>
+          <button className={`Delete_group ${isGroupSelected ? "" : "display_none"} ${Groups.some(i => i._id == selectedGroupId && userdetails._id != i.admin) ? "display_none" : ""}`} onClick={()=>{DeleteGroup(userdetails._id)}}>Delete Group</button>
         </div>
         <div className='messages'>
           {chats.length > 0 ? (
@@ -688,7 +707,7 @@ const Dashboard = () => {
             </>
           )}
         </div>
-          <div className={`message_input ${userContacts.some(contact => contact._id === friend_data._id) ? '' : "display_none"}`}> {/* If a person is in contacts list then only display*/}
+          <div className={`message_input ${isGroupSelected ? "" : userContacts.some(contact => contact._id === friend_data._id) ? '' : "display_none" }`}> {/* If a person is in contacts list then only display*/}
           <input type="text" name="message" value={message} onChange={handleMessage} />
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-send" viewBox="0 0 16 16" onClick={handleSent}>
             <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76z"/>
