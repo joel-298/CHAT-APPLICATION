@@ -1,10 +1,9 @@
 GROUPS ARE NOW BEING CREATED ! 
 
-// -> DELETE WHOLE GROUP 
-// -> PARTICIPANTS VIEW IN GROUP 
-// -> ADD , BLOCK , KICK PARTICIPANTS 
-// -> PARTICIPANS CAN LEAVE THE GROUP
-// -> CHAT IN GROUP IMCLUDING MESSAGES 
+// work on participants : in models updated participants form array to array of objects !
+// -> PARTICIPANTS VIEW IN GROUP (both admin and user)
+// -> ADD , REMOVE PARTICIPANTS 
+
 
 // WEBRTC !
 // IMPLEMENT CONNECTIONS 
