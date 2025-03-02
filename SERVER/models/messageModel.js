@@ -12,6 +12,10 @@ const messageSchema = mongoose.Schema({
         ref : "users", 
         require : true , 
     },
+    image : {
+        type : String ,
+        require : true , 
+    },
     text : {
         type : String ,
         require : true , 

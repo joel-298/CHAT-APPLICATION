@@ -15,6 +15,7 @@ const messageModel = require("./models/messageModel");
 const friendsModel = require("./models/friendsModel");
 const { default: mongoose } = require("mongoose");
 const groupModel = require("./models/groupModel");
+const userModel = require("./models/userModel");
 
 app.use(express.urlencoded({extended:false})) ; 
 app.use(express.json()) ; 
@@ -29,7 +30,7 @@ app.use('/messages',message) ;
 
 // SEND MESSAGE
 const addMessageToDb = async (data) => {
-    const {userdetails , friend_data , message , isGroup } = data ; 
+    const {userdetails , friend_data , message , isGroup ,senderImage} = data ; 
     try {
         let chat = {} 
         if(isGroup) { // if its a group
@@ -58,7 +59,8 @@ const addMessageToDb = async (data) => {
         const newMessage = await messageModel.create({
             chatId : chat._id ,
             senderId: userdetails._id ,
-            text : message
+            text : message,
+            image : senderImage
         }) ; 
 
         // update the last message : 
@@ -319,19 +321,92 @@ const Create_Group = async (data) => {  // {admin , filteredMembers , creatingGr
     }
 };
 
-// LEAVE GROUP 
-const LeaveGroup = async (data) => { // {id,selectedGroupId}
-    // remove group id from friends model 
-    // remove users id from participants of this group 
-};
-
 const DeleteGroup = async (data) => { // {id,selectedGroupId,participants:} // we also need to participants 
     // delete group from groups schema 
     // remove its chats schema 
     // make a loop on participants and 
     // in participants.Groups remove the previously group id too 
+    const {id,selectedGroupId,participants} = data ; 
+    try {
+        const group = await groupModel.findOneAndDelete({_id : selectedGroupId}) ; 
+        if(group) {
+            const chat = await chatModel.findOneAndDelete({receiverId : selectedGroupId}) ; 
+            if(chat) {
+                await messageModel.deleteMany({chatId : chat._id}) ; 
+            }
+            return {boolean : true} ; 
+        }
+        else{
+            console.log("Group not found !") ; 
+            return {boolean : false} ; 
+        }
+    } catch (error) {
+        console.log("Error while deleting Group , and its chat Id and their messages !", error) ; 
+        return {boolean : false} ; // return false because then the parent function will not return anything .... 
+    }
 }
+const UpdatedGroups = async (data) => { // {user_id , selectedGroupId}
+    const {user_id , selectedGroupId} = data ; 
+    try {
+        const obj = await friendsModel.findOne({user_id : user_id }) ; // find participants in friendmodel 
+        if(obj) {
+            obj.Groups = obj.Groups.filter((ele)=> ele != selectedGroupId) ;
+            await obj.save() ; 
 
+
+            // after filter populate and return 
+            const updatedFriendData = await friendsModel.findOne({user_id : user_id}).populate("Groups", "name image participants admin blocked_members") ;
+            return {boolean : true , Groups : updatedFriendData.Groups} ;   
+        }
+        else{
+            console.log("User account not found !") ; 
+            return {boolean : false} ; 
+        }
+    } catch (error) {
+        console.log("Error while leaving group !",error) ; 
+        return {boolean : false} ; 
+    }
+
+}
+const Leave_Group = async (data) => {
+    const {userdetails,selectedGroupId} = data ; 
+    try {
+        const group = await groupModel.findOne({_id : selectedGroupId}) ; 
+        if(group) {
+            // remove user from the group participants 
+            group.participants = group.participants.filter((id) => id != userdetails._id) ; 
+            console.log("Group Participants !",group.participants) ; 
+
+            // remove the group from users friendModel Group array 
+            const user = await friendsModel.findOne({user_id : userdetails._id}) ; 
+            if(user) {
+                user.Groups = user.Groups.filter((id) => id != selectedGroupId) ; 
+                await user.save() ; 
+            }
+
+            await group.save() ; 
+            console.log("RETURNING TRUE") ; // printing true 
+            return {boolean : true } ; // but sending undefined rest everything is workin !
+        }   
+    } catch (error) {
+        console.log("Error while leaving the group !") ; 
+        return {boolean : false} ; 
+    }
+};
+
+const leave_updated_group = async (id) => {
+    try {
+        console.log(id)  ;
+        const user = await friendsModel.findOne({user_id : id}).populate("Groups", "name image participants admin blocked_members") ; 
+        if(user) {
+            console.log("Groups_leave : ", user.Groups) ; 
+            return {boolean : true , groups : user.Groups} ; 
+        }
+    } catch (error) {
+        console.log("Error in leaving updated group !") ; 
+        return {boolean : false} ; 
+    }
+}
 
 
 const server = createServer(app) ; 
@@ -354,7 +429,8 @@ io.on("connection",(socket)=>{
 
     // SEND AND RECEIVE MESSAGE                                                                                             // ALSO FETCH HERE THAT ARE WE SENDING THIS TO A USER OR A GOURP ? 
     socket.on("message",(data) => {                                                                                         //data => {friendSocketId,friend_data,message,userDetails} // userDetails=> {_id,name,etc...} , friend_data => {_id,name,etc .....} , members : [] , GroupId
-        console.log(data.friendSocketId , data.friend_data._id, data.message , data.userdetails._id , data.isGroup) ; 
+        // console.log(data.friendSocketId , data.friend_data._id, data.message , data.userdetails._id , data.isGroup) ; 
+        console.log(`TO FRIEND SOCKET ID : ${data.friendSocketId} ,\n FRIEND ID : ${data.friend_data._id},\n FROM : ${data.userdetails._id},\n  Message : ${data.message} ,\n Is group selected ${data.isGroup} ,\n Group Id : ${data.GroupId } ,\n Group Members : ${data.members}, \n Sender Image : ${data.senderImage}`)
         if(data.friendSocketId != "") {
             addMessageToDb(data) ; 
             if(!data.isGroup) {
@@ -593,29 +669,62 @@ io.on("connection",(socket)=>{
         }
     });
 
-    // LEAVE GROUP 
-    socket.on("Leave:Group" , async (data) => { // {id,selectedGroupId}
-        console.log("Remove Person : ", data.id , "From GROUP !", data.selectedGroupId) ;
-        const obj = await LeaveGroup(data) ; 
-        if(obj.boolean) {
-            // removed successfully
-            // emit 
-        }
-        else {
-            // was not removed
-        }
-    }); 
     // DELETE GROUP
-    socket.on("Delete:Group" , async (data) => { // {id,selectedGroupId}
-        console.log("Admin Id : ", data.id , "of GROUP !", data.selectedGroupId) ; 
+    socket.on("Delete:Group" , async (data) => { // {id,selectedGroupId,participants}
+        console.log("Admin Id : ", data.id , "of GROUP !", data.selectedGroupId , "Participants : ", data.participants) ; 
         const obj = await DeleteGroup(data) ; 
         if(obj.boolean) {
-            // remove successfully   
+            // update all users Groups therefore return friendsModel.Groups
+             for(let i = 0 ; i < data.participants.length ; i++ ) {
+                const groups = await UpdatedGroups( {user_id : data.participants[i], selectedGroupId : data.selectedGroupId } ) ; // will return {boolean : true , updatedFriendData} 
+                if(obj.boolean) { // i.e data has been updated successfully 
+                    // find socket id of that participant 
+                    const socketId = userSocketMap[data.participants[i]] ; 
+                    if(socketId) {
+                        io.to(socketId).emit("Group:Deleted", { groups : groups.Groups , id_of_deleted_group : data.selectedGroupId }) ; 
+                    }
+                    else{
+                        // do not emit 
+                    }
+                }
+                else{
+                    // do nothing becaust theres an error in removing 
+                    console.log("Update Groups failed !") ; 
+                }
+             }
         }
         else{
             // was not removed 
+            console.log("Group Deletion failed !") ; 
         }
     });  
+    // LEAVE GROUP
+    socket.on("Leave:Group", async (data) => { // {userdetails,selectedGroupId,members}
+        console.log(`Person leaving ID : ${data.userdetails} ,\n THE GROUP ID : ${data.selectedGroupId}, \n MEMBERS : ${data.members}`);
+        // in this function when a person leave a group : 
+        // update all the participants that a person just left 
+        // return the group object from Groups model to all the participants with updated group object : 
+        // also strore a message in db that this person just left the group ! 
+        // if participants are online :
+        // return {group : Group , message : this person just left}
+        const obj = await Leave_Group(data) ; 
+        console.log("Receiving boolean true", obj.boolean); 
+        if(obj.boolean) {
+            // leave_updated_group
+            for(let i = 0 ; i < data.members.length ; i++) {
+                // fetch their groups again ! 
+                const groups = await leave_updated_group(data.members[i]) ;  // groups 
+                console.log("GROUPS : " ,groups) ; 
+                if(groups.boolean) {
+                    const socketId = userSocketMap[data.members[i]] ; 
+                    io.to(socketId).emit("Group:Left", groups.groups) ; 
+                }
+            }
+        }   
+        else{   
+            console.log("Error while leaving Group !") ; 
+        }
+    });
 
 
     // DISCONNECT

@@ -61,7 +61,8 @@ const Dashboard = () => {
           });
           // 4) RECEIVE MESSAGES 
           socket.on("receive_messages", (data) => {
-            console.log(`FROM : ${data.userdetails.name} & its id : ${data.userdetails._id}, SOCKET ID :${data.friendSocketId} , Message : ${data.message}`);
+            // console.log(`FROM : ${data.userdetails.name} & its id : ${data.userdetails._id}, SOCKET ID :${data.friendSocketId} , Message : ${data.message}`);
+            console.log(`RECEIVING ! MY SOCKET ID : ${data.friendSocketId} ,\n MY ID :${data.friend_data._id} ,\n MESSAGE : ${data.message} ,\n FROM : ${data.userdetails._id} ,\n IS GROUP : ${data.isGroup} ,\n MEMBERS : ${data.members}, \n GROUP ID : ${data.GroupId}`) ; 
 
             // -------------------------------------------CHAT BAR LOGIC IGNORE FOR NOW --------------------------------------------------------------- : 
             // if chat does not exists and other user sends me message : i.e FROM : _id not found in chat array 
@@ -70,13 +71,28 @@ const Dashboard = () => {
             // ---------------------------------------------------------------------------------------------------------------------------------------- :
 
             // in here if data.userdetails._id == friend_data._id then append that message to chat array
-            console.log(data.GroupId , selectedGroupId) ; // why this function down below is not working when ids are same ? 
-            if(data.userdetails._id == friendIdRef.current || data.GroupId == friendIdRef.current){ 
-              setChatsArray((chats)=>[...chats,{
-                senderId : data.userdetails._id ,
-                text : data.message , 
-                createdAt : Date.now() 
-              }]);
+            // console.log(data.GroupId , selectedGroupId) ; // why this function down below is not working when ids are same ? 
+            if(data.isGroup) { // i.e group selected 
+              console.log(`DATA.GROUPID : ${data.GroupId} , SELECTED GROUP ID : ${friendIdRef.current}` ) ; 
+              console.log(data.GroupId == friendIdRef.current) ; 
+              if(data.GroupId == friendIdRef.current){ 
+                setChatsArray((chats)=>[...chats,{
+                  senderId : data.userdetails._id ,
+                  text : data.message , 
+                  createdAt : Date.now() ,
+                  image : data.senderImage
+                }]);
+              }
+            }
+            else{ // group is not selected 
+              if(data.userdetails._id == friendIdRef.current){ 
+                setChatsArray((chats)=>[...chats,{
+                  senderId : data.userdetails._id ,
+                  text : data.message , 
+                  createdAt : Date.now() ,
+                  image : data.senderImage
+                }]);
+              }
             }
           });
           // 5) SEND REQUEST 
@@ -145,6 +161,33 @@ const Dashboard = () => {
             setGroups((prevGroups)=>[...prevGroups,data]) ; // add a new Group too  
             console.log(Groups) ; 
           });
+          // 20) Group Deleted 
+          socket.on("Group:Deleted", ({ groups, id_of_deleted_group }) => {      // reciving group array from friend , and deleted group id
+            setGroups(groups) ; 
+            console.log(friendIdRef.current , id_of_deleted_group);
+            if(friendIdRef.current == id_of_deleted_group) {                     // what we are doing here that if one of the participants has opened this group in his chatbox then update it because it dosn't exists anyore
+              setFriendData({_id:"",image:"https://th.bing.com/th/id/OIP.tuHNM-LQLhwdfR01L2x-mQAAAA?w=400&h=400&rs=1&pid=ImgDetMain",name:"Avatar"}) ;
+            }
+          }); 
+          // 21) GROUP left
+          socket.on("Group:Left", (data) => { // {message automatically , Groups : populated !}
+            // WHAT I NEED IN THIS FUNCTION : 
+            // 1) to update the ui of the person who just left therefore : 
+                // set its friendData();  
+            // 2) show a message on other users who has friendIdRef.current == grouPiD WHO HAS JUST LEFT : 
+               // UPDATE THERE CHAT ARRAY WITH THE MESSAGE : 
+            // 3) UPDATE THIS GROUP PARTICIPANTS :
+              // -> 1st this they are reciving this group from freinds model 
+              // -> friends model in joining group object which contains the participants 
+              // -> THEREFORE WE ARE GOING TO REFRESH THE WHOLE GROUPS ARRAY OF THIS PERSON WHEN THIS PERSON LEAVES !
+
+            // REQUIREMENTS : 
+            // receive message , 
+            // receive the group id , 
+            // receive the friendModel Groups populated ...
+            console.log("updated groups of users : ", data) ; 
+            setGroups(data) ; 
+          }) ;
         }
         else{
           navigate('/') ;
@@ -285,7 +328,7 @@ const Dashboard = () => {
   }
   const handleSent = async (e) => {
     e.preventDefault() ; 
-    console.log(`TO : ${friendSocketId} , FRIEND ID : ${friend_data._id}: message : ${message} `) ; 
+    console.log(`TO FRIEND SOCKET ID : ${friendSocketId} ,\n FRIEND ID : ${friend_data._id},\n FROM : ${userdetails._id},\n  Message : ${message} ,\n Is group selected ${isGroupSelected} ,\n Group Id : ${selectedGroupId}`) ; 
 
     // IN HERE : 
     // if chat does not exists and other user sends me message : i.e FROM : _id not found in chat array 
@@ -297,10 +340,12 @@ const Dashboard = () => {
       setChatsArray((chats)=>[...chats,{
         senderId : userdetails._id ,
         text : message , 
+        image : userdetails.image,
         createdAt : Date.now() 
       }]);
     }
-    socket.emit("message",{friendSocketId,friend_data,message,userdetails,isGroup : isGroupSelected,members : selectedGroupId ? Groups.find(group => group._id === selectedGroupId)?.participants || []: [],  GroupId : isGroupSelected ? selectedGroupId : "" }) ; 
+  
+    socket.emit("message",{friendSocketId,friend_data,message,userdetails,isGroup : isGroupSelected, members : selectedGroupId ? Groups.find(group => group._id === selectedGroupId)?.participants || []: [],  GroupId : isGroupSelected ? selectedGroupId : "" , senderImage : userdetails.image}) ; 
     setMessage("") ; 
   };
 
@@ -442,14 +487,18 @@ const Dashboard = () => {
     }
 
     // LEAVING GROUP 
-    const LeaveGroup = (id) => {
-      console.log(id) ; 
-      socket.emit("Leave:Group", {id,selectedGroupId}) ; 
+    const LeaveGroup = () => {
+      console.log(userdetails); 
+      socket.emit("message",{friendSocketId,friend_data,message : "Left the group",userdetails,isGroup : isGroupSelected, members : selectedGroupId ? Groups.find(group => group._id === selectedGroupId)?.participants || []: [],  GroupId : isGroupSelected ? selectedGroupId : "" , senderImage : userdetails.image}) ;
+      socket.emit("Leave:Group", {userdetails,selectedGroupId,members : selectedGroupId ? Groups.find(group => group._id === selectedGroupId)?.participants || []: []}) ;                                                                              // for updating the groups of other users
+      setFriendData({_id:"",image:"https://th.bing.com/th/id/OIP.tuHNM-LQLhwdfR01L2x-mQAAAA?w=400&h=400&rs=1&pid=ImgDetMain",name:"Avatar"}) ; // remove the group from the users ui 
     };
     // DELETING WHOLE GROUP 
     const DeleteGroup = (id) => {
       console.log(id) ; 
       socket.emit("Delete:Group", {id , selectedGroupId , participants: Groups.find((ele) => ele._id === selectedGroupId)?.participants || []}) ; 
+      setIsGroupSelected(false) ; 
+      setFriendData({_id:"",image:"https://th.bing.com/th/id/OIP.tuHNM-LQLhwdfR01L2x-mQAAAA?w=400&h=400&rs=1&pid=ImgDetMain",name:"Avatar"}) ;
     }
 
   return (
@@ -484,7 +533,7 @@ const Dashboard = () => {
                   usersArray.map((ele) => (
                       <div key={ele._id} className={`people ${BlockedContacts.some(req => req._id == ele._id) ? 'display_none' : ''} ${BlockedBy.some(req => req._id == ele._id) ? 'display_none' : ""}`}> {/* If a person is blocked we will not display that person && if the user is blocked by someone we will not display that person too*/}
                         <div className='user-card'> 
-                          <div onClick={()=>{handleFriendData(ele._id,"search",false) }} className='box1'>
+                          <div onClick={()=>{handleFriendData(ele._id,"search",false) , setSelectedGroupId("") }} className='box1'>
                             <img src={ele.image} alt='User Avatar' />
                             <p>{ele.name}</p>
                             <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
@@ -526,7 +575,7 @@ const Dashboard = () => {
           userContacts.map((ele) => (
               <div key={ele._id} className={`contacts_section ${BlockedContacts.some(req => req._id == ele._id) ? 'display_none' : ''} ${BlockedBy.some(req => req._id == ele._id) ? 'display_none' : ""}`} > {/* If a person is blocked we will not display that person && if user is blocked by someOne we will not diplay thet person too*/}
                 <div className='user-card'> 
-                  <div onClick={()=>{handleFriendData(ele._id,"contacts",false) }} className='box1'>
+                  <div onClick={()=>{handleFriendData(ele._id,"contacts",false) , setSelectedGroupId("") }} className='box1'>
                     <img src={ele.image} alt='User Avatar' />
                     <p>{ele.name}</p>
                     <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
@@ -598,12 +647,19 @@ const Dashboard = () => {
       <div className='group_chat'>
         {Groups.length > 0 ? (
           Groups.map((ele,index) => ( // ----------------> (2) 
-            <div key={index} className='group_card' onClick={()=>{handleFriendData(ele._id,"groups",true) }}>
-              <img src={ele.image}></img>
-              <p>{ele.name}</p>
-              {/* {ele.participants.map((i,index)=>(
-                <p>{i}</p>
-              ))} */}
+            <div key={index} className='group_card'>
+              <div className='box1' onClick={()=>{handleFriendData(ele._id,"groups",true)}}>
+                <img src={ele.image}></img>
+                <p>{ele.name}</p>
+                {/* {ele.participants.map((i,index)=>(
+                  <p>{i}</p>
+                ))} */}
+              </div>
+              <div className='box2'>
+                <button className={`${ele.admin == userdetails._id ? "" : "display_none"}`}>+</button>
+                <button className={`${ele.admin == userdetails._id ? "" : "display_none"}`}>-</button>
+                <button>view</button>
+              </div>
             </div>
           ))
         ) : ( 
@@ -691,14 +747,14 @@ const Dashboard = () => {
           </button>
           {/* write a funcitonality here that is its a group show an button to leave group 
           if its admin show a button of delete group  */}
-          <button className={`Leave_group ${isGroupSelected ? "" : "display_none"} ${Groups.some(i => i._id == selectedGroupId && userdetails._id == i.admin) ? "display_none" : ""}`} onClick={()=>{LeaveGroup(userdetails._id)}}>Leave</button>
+          <button className={`Leave_group ${isGroupSelected ? "" : "display_none"} ${Groups.some(i => i._id == selectedGroupId && userdetails._id == i.admin) ? "display_none" : ""}`} onClick={LeaveGroup}>Leave</button>
           <button className={`Delete_group ${isGroupSelected ? "" : "display_none"} ${Groups.some(i => i._id == selectedGroupId && userdetails._id != i.admin) ? "display_none" : ""}`} onClick={()=>{DeleteGroup(userdetails._id)}}>Delete Group</button>
         </div>
         <div className='messages'>
           {chats.length > 0 ? (
             <>
             {chats.map((ele,index)=>(
-              <p key={index} className={`${ele.senderId == userdetails._id ? "personal_user" : "other_user"}`}>{ele.text}</p>  
+              <p key={index} className={`${ele.senderId == userdetails._id ? "personal_user" : "other_user"}`}><img src={ele.image}></img>&nbsp;&nbsp;{ele.text}</p>  
             ))}
             </>
           ) : (

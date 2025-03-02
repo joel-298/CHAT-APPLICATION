@@ -255,6 +255,10 @@ p , button {
   border-radius: 5px;
   padding: 7px;
 }
+.messages p img {
+  height: 50px;
+  width: 50px;
+}
 
 .other_user {
   background: linear-gradient(rgb(136, 49, 213),purple);
@@ -469,6 +473,7 @@ p , button {
   width: auto;
   column-gap: 15px;
 }
+
 .group_card img {
   height: 70px;
   width: 70px;
@@ -481,6 +486,10 @@ p , button {
   cursor: pointer;
   transition: 0.3s;
   background-color: rgba(49, 49, 49, 0.702);
+}
+.group_card .box1 {
+  /* background-color: red; */
+  justify-content: flex-start;
 }
 
 
