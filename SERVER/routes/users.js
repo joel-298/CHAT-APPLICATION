@@ -89,12 +89,12 @@ user.post("/participants", protectedRoute , async (req,res) => {
     } 
     else{
       console.log("Object not found !") ; 
-      res.json({boolean : false});  
+      res.json({boolean : true});  
     }
 
   } catch (error) { 
     console.log("Error while fetching participants !") ; 
-    res.json({boolean:false}) ; 
+    res.json({boolean:true}) ; 
   }
 }); 
 

@@ -368,7 +368,7 @@ p , button {
   flex-direction: column;
   margin: 10px 0px;
 }
-.Groups h2 {
+.Groups .groups_h2 {
   font-weight: 500;
   font-size: 40px;
   background: linear-gradient(to bottom right,rgb(66, 1, 103),rgb(0, 149, 255));
@@ -499,6 +499,59 @@ p , button {
   width: fit-content;
 }
 
+.box3 , .box4 {
+  background-color: rgba(69, 69, 69, 0.811);
+  display: flex;
+  flex-direction: column;
+  padding: 10px;
+  row-gap: 5px;
+  border-radius: 10px;
+}
+.box3 h1 {
+  /* background-color: grey; */
+  margin: 0px;
+}
+.heading {
+  background-color: rgba(128, 128, 128, 0.556);
+  display: flex;
+  flex-direction: column;
+  row-gap: 0px;
+  border-radius: 10px;
+  padding: 10px 10px;
+}
+.heading img {
+  margin: auto;
+}
+.heading h2 {
+  font-size: 30px;
+  /* background-color: red; */
+  font-weight: 500;
+  margin: 0px;
+  justify-content: center;
+}
+.heading h3 {
+  margin: 0px;
+  font-size: 22px;
+  font-weight: 400; 
+}
+/* .box3 .members {
+  background-color: grey;
+} */
+.participants_card {
+  /* background-color: blue; */
+  display: flex;
+  padding: 10px;
+  border-radius: 10px;
+}
+.participants_card img {
+  height: 60px; 
+  width: 60px;
+}
+.participants_card:hover {
+  background-color: grey;
+  transition: 0.3s;
+  cursor: pointer;
+}
 .display_none {
   display: none; 
 }

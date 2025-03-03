@@ -440,10 +440,9 @@ const Dashboard = () => {
     const [members,setMembers] = useState([]) ;                       // ADD MEMBERS TO YOUR NEWLY CREATED GROUP !
 
     const [selectedGroupId,setSelectedGroupId] = useState("") ;       // ID FOR EDITING GROUP ONLY ! // add more members remove members etc etc 
-    const [BlockedArrayGroup,setBlockedArrayGroup] = useState([]) ;   // will contain blocked members of that group 
-    const [Kick, setKick] = useState([]) ;                            // Do not need a db in backend , just pass this array to kick someone from the group !
-    const [viewParticipants,setViewParticipants] = useState([]) ;
-    const [viewId,setViewId] = useState("") ;  
+    // const [BlockedArrayGroup,setBlockedArrayGroup] = useState([]) ;   // will contain blocked members of that group 
+    // const [Kick, setKick] = useState([]) ;                            // Do not need a db in backend , just pass this array to kick someone from the group !
+
 
     // ADDING AND REMOVING MEMBERS
     const handleCheckboxChange = (_id) => {
@@ -504,29 +503,86 @@ const Dashboard = () => {
     }
 
 
-    const viewMembers = async (id) => {
-      if(id == viewId) {
+
+
+
+
+    const [viewParticipants,setViewParticipants] = useState([]) ;     // ARRAY OF OBJECTS OF PARTICIPANTS : {NAME , IMAGE , _ID} 
+    const [view,setView] = useState({}) ;                             // GROUP USESTATE TO VIEW INCLUDING GROUP NAME , IMAGE AND ALL 
+    // VIEW MEMBERS 
+    const viewMembers = async (id,name,image) => {
+      if(id == view._id) {
         setViewParticipants([]) ; 
-        setViewId("") ; 
+        setView({}) ; 
       }
       else{
         try {
-          setViewId(id) ; 
+          setView({_id:id,name:name,image:image}) ; 
           const response = await axios.post("http://localhost:4000/user/participants", {selectedGroupId:id} , {withCredentials : true}) ; 
           if(response.data.boolean) {
             setViewParticipants(response.data.obj.participants) ; 
-            console.log(response.data.obj.participants) ; // undefined !
-            console.log(viewParticipants) ;
           }
           else{
             console.log("Participants not found !") ; 
+            navigate("/") ; 
           }
         } catch (error) { 
           console.log("Error while fetching participants",error) ; 
           alert("Request Time Out , Please try again later") ; 
+          navigate("/") ; 
         }
       }
     };
+
+    const [EditGroup,setEditGroup] = useState({}) ;                      // selected group for edit !
+    const [updatedParticipants,setUpdatedParticipants] = useState([]) ;  // holds the initial and after adding or removing participants of the selected group ! 
+    // EDIT GROUP ADD OR REMOVE MEMBERS !
+    const EditId = async (id,name,image,admin) => {  
+      if(id == EditGroup.id) {  
+        setEditGroup({}) ; 
+        setUpdatedParticipants([]) ;  
+      }
+      else{
+        try {
+          const response = await axios.post("http://localhost:4000/user/participants", {selectedGroupId:id} , {withCredentials : true}) ; 
+          if(response.data.boolean) {
+            setEditGroup({id:id,name:name,image:image,admin:admin}) ;
+            setUpdatedParticipants(response.data.obj.participants) ; // 1st add initial participants to this array !
+          }
+          else{
+            console.log("Participants not found !") ; 
+            setEditGroup({}) ; 
+            setUpdatedParticipants([]) ;  
+            navigate("/") ; 
+          }
+        } catch (error) { 
+          console.log("Error while fetching participants",error) ; 
+          alert("Request Time Out , Please try again later") ; 
+          setEditGroup({}) ; 
+          setUpdatedParticipants([]) ;  
+          navigate("/") ; 
+        } 
+      }
+    };
+    const Handle_group_update = () => { 
+      console.log(updatedParticipants) ; 
+    }
+    const getAllParticipants = () => {
+      const participantsNotInContacts = updatedParticipants.filter(                            // Participants not in userContacts
+        participant => !userContacts.some(contact => contact._id === participant._id)
+      );
+      return [...userContacts, ...participantsNotInContacts];
+    };
+  // Handle checkbox change
+  const handleChangeUpdatedParticipants = (contactId) => {
+    setUpdatedParticipants((prevParticipants) => {
+      if (prevParticipants.includes(contactId)) {
+        return prevParticipants.filter((id) => id !== contactId);
+      } else {
+        return [...prevParticipants, contactId];
+      }
+    });
+  };
 
   return (
     <>
@@ -611,12 +667,6 @@ const Dashboard = () => {
                   we can assign 2 classes like this className="status online_status" */}
                   <div className='box2'>
                     <button onClick={()=>{Unfollow(ele._id)}} className={`${userdetails._id == ele._id ? 'display_none' : ''}`}>Unfollow</button>
-                     {/*Give a option of DELETE CHAT */}
-                    {/* <button className={`${ele._id != userdetails._id && onlineUsers[ele._id] ? "" : "display_none"}`}>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-camera-video-fill" viewBox="0 0 16 16">
-                      <path fill-rule="evenodd" d="M0 5a2 2 0 0 1 2-2h7.5a2 2 0 0 1 1.983 1.738l3.11-1.382A1 1 0 0 1 16 4.269v7.462a1 1 0 0 1-1.406.913l-3.111-1.382A2 2 0 0 1 9.5 13H2a2 2 0 0 1-2-2z"/>
-                    </svg>
-                    </button> */}
                     <button className={`Blockbutton ${ele._id == userdetails._id ? 'display_none' : ''}`} onClick={()=>handleBlock(ele._id)}>
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-ban" viewBox="0 0 16 16">
                         <path d="M15 8a6.97 6.97 0 0 0-1.71-4.584l-9.874 9.875A7 7 0 0 0 15 8M2.71 12.584l9.874-9.875a7 7 0 0 0-9.874 9.874ZM16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0"/>
@@ -642,7 +692,7 @@ const Dashboard = () => {
     </div><br />
 
     <div className='Groups'>
-      <h2>Groups</h2>
+      <h2 className='groups_h2'>Groups</h2>
       <div className={`groups_dashboard ${addgroup == true ? "disaply_none" : ""}`}> 
         <button onClick={()=>{setaddGroup(true)}}>Add</button>
         <h3>CREATE GROUP !</h3>
@@ -680,24 +730,16 @@ const Dashboard = () => {
                 <p>{ele.name}</p>
               </div>
               <div className='box2'>
-                <button className={`${ele.admin == userdetails._id ? "" : "display_none"}`}>Edit</button>
-                <button onClick={()=>{viewMembers(ele._id)}}>view</button>
+                <button className={`${ele.admin == userdetails._id ? "" : "display_none"}`} onClick={()=>{EditId(ele._id,ele.name,ele.image,ele.admin), setViewParticipants([]), setView({})}}>Edit</button>
+                <button onClick={()=>{viewMembers(ele._id,ele.name,ele.image), setEditGroup({})}}>view</button>
               </div>
             </div>
           ))
         ) : ( 
           <div>
-            <h2>No Groups present !</h2>
+            <h2 className='no_groups_present'>No Groups present !</h2>
           </div>
         )} 
-      </div>
-      <div className={`box3 ${viewParticipants.length == 0 ? "display_none" : ""}`}>
-        {viewParticipants.map((ele,index)=>(
-          <div key={index}>
-            <img src={ele.image} />
-            <p>{ele.name}</p>
-          </div>
-        ))}
       </div>
     </div><br />
 
@@ -751,11 +793,6 @@ const Dashboard = () => {
     </div>
     </div> 
 
-    <div className='Chatbar'>
-      <h2>CHATS</h2>
-      
-    </div>
-
     <div className='chats'>
       {friend_data._id == "" || BlockedContacts.some(req => req._id == friend_data._id) || BlockedBy.some(req => req._id == friend_data._id) ? (
         <>
@@ -801,6 +838,41 @@ const Dashboard = () => {
         </div>
       </>
       )}
+    </div><br />
+    <div className={`box3 ${viewParticipants.length == 0 ? "display_none" : ""}`}>
+      <div className="heading">
+        <img src={view.image} />
+        <h2>{view.name}</h2>
+        <h3>Group Members : {viewParticipants.length}</h3>
+      </div>
+      <div><button onClick={()=>{setViewParticipants([]), setView({})}}>close</button></div>
+      <div className="members">
+        {viewParticipants.map((ele,index)=>(
+          <div className='participants_card' key={index}>
+            <img src={ele.image} />&nbsp;&nbsp;
+            <p>{ele.name}</p>
+            <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
+          </div>
+        ))}
+      </div>
+    </div>
+    <div className={`box4 ${(EditGroup != undefined || null ) && EditGroup.admin == userdetails._id ? "" : "display_none"} `}>
+      <div className="heading">
+        <img src={EditGroup.image} />
+        <h2>{EditGroup.name}</h2>
+      </div>
+      <div><button onClick={()=>{setEditGroup({})}}>close</button></div>
+      <div className="members">
+        {getAllParticipants().map((ele,index)=>(
+          <div className='participants_card' key={index}>
+            <input type="checkbox" checked={updatedParticipants.some(i => i._id === ele._id)}/>&nbsp;&nbsp;
+            <img src={ele.image} />&nbsp;&nbsp;
+            <p>{ele.name}</p>
+            <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
+          </div>
+        ))}
+      </div>
+      <button onClick={Handle_group_update}>SAVE</button>
     </div>
     </>
   )
