@@ -656,8 +656,7 @@ const Dashboard = () => {
                 ))} */}
               </div>
               <div className='box2'>
-                <button className={`${ele.admin == userdetails._id ? "" : "display_none"}`}>+</button>
-                <button className={`${ele.admin == userdetails._id ? "" : "display_none"}`}>-</button>
+                <button className={`${ele.admin == userdetails._id ? "" : "display_none"}`}>Edit</button>
                 <button>view</button>
               </div>
             </div>

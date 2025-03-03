@@ -491,7 +491,13 @@ p , button {
   /* background-color: red; */
   justify-content: flex-start;
 }
-
+.group_card .box2 {
+  align-items: center;
+}
+.group_card .box2 button {
+  height: fit-content;
+  width: fit-content;
+}
 
 .display_none {
   display: none; 
