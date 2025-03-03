@@ -442,6 +442,8 @@ const Dashboard = () => {
     const [selectedGroupId,setSelectedGroupId] = useState("") ;       // ID FOR EDITING GROUP ONLY ! // add more members remove members etc etc 
     const [BlockedArrayGroup,setBlockedArrayGroup] = useState([]) ;   // will contain blocked members of that group 
     const [Kick, setKick] = useState([]) ;                            // Do not need a db in backend , just pass this array to kick someone from the group !
+    const [viewParticipants,setViewParticipants] = useState([]) ;
+    const [viewId,setViewId] = useState("") ;  
 
     // ADDING AND REMOVING MEMBERS
     const handleCheckboxChange = (_id) => {
@@ -500,6 +502,31 @@ const Dashboard = () => {
       setIsGroupSelected(false) ; 
       setFriendData({_id:"",image:"https://th.bing.com/th/id/OIP.tuHNM-LQLhwdfR01L2x-mQAAAA?w=400&h=400&rs=1&pid=ImgDetMain",name:"Avatar"}) ;
     }
+
+
+    const viewMembers = async (id) => {
+      if(id == viewId) {
+        setViewParticipants([]) ; 
+        setViewId("") ; 
+      }
+      else{
+        try {
+          setViewId(id) ; 
+          const response = await axios.post("http://localhost:4000/user/participants", {selectedGroupId:id} , {withCredentials : true}) ; 
+          if(response.data.boolean) {
+            setViewParticipants(response.data.obj.participants) ; 
+            console.log(response.data.obj.participants) ; // undefined !
+            console.log(viewParticipants) ;
+          }
+          else{
+            console.log("Participants not found !") ; 
+          }
+        } catch (error) { 
+          console.log("Error while fetching participants",error) ; 
+          alert("Request Time Out , Please try again later") ; 
+        }
+      }
+    };
 
   return (
     <>
@@ -651,13 +678,10 @@ const Dashboard = () => {
               <div className='box1' onClick={()=>{handleFriendData(ele._id,"groups",true)}}>
                 <img src={ele.image}></img>
                 <p>{ele.name}</p>
-                {/* {ele.participants.map((i,index)=>(
-                  <p>{i}</p>
-                ))} */}
               </div>
               <div className='box2'>
                 <button className={`${ele.admin == userdetails._id ? "" : "display_none"}`}>Edit</button>
-                <button>view</button>
+                <button onClick={()=>{viewMembers(ele._id)}}>view</button>
               </div>
             </div>
           ))
@@ -667,7 +691,14 @@ const Dashboard = () => {
           </div>
         )} 
       </div>
-
+      <div className={`box3 ${viewParticipants.length == 0 ? "display_none" : ""}`}>
+        {viewParticipants.map((ele,index)=>(
+          <div key={index}>
+            <img src={ele.image} />
+            <p>{ele.name}</p>
+          </div>
+        ))}
+      </div>
     </div><br />
 
 

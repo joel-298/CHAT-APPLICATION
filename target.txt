@@ -1,7 +1,5 @@
 GROUPS ARE NOW BEING CREATED ! 
 
-// work on participants : in models updated participants form array to array of objects !
-// -> PARTICIPANTS VIEW IN GROUP (both admin and user)
 // -> ADD , REMOVE PARTICIPANTS 
 
 

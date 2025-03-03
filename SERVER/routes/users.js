@@ -2,6 +2,7 @@ const express = require("express") ;
 const userModel = require("../models/userModel");
 const protectedRoute = require("../middleware/protectedRoute");
 const friendsModel = require("../models/friendsModel");
+const groupModel = require("../models/groupModel");
 const user = express.Router() ; 
 
 // SEARCH BAR : 
@@ -76,6 +77,26 @@ user.get("/contacts" , protectedRoute  , async (req,res) => { // PROTECTED ROUTE
         });
       }
 });
+
+user.post("/participants", protectedRoute , async (req,res) => {
+  const {selectedGroupId} = req.body ; 
+  console.log("SELECTED GROUP ID ",req.body.selectedGroupId) ; 
+  try {
+    const obj = await groupModel.findOne({_id: selectedGroupId}).populate("participants", "name image");
+    if(obj) {
+      console.log(obj) ; 
+      res.json({boolean:true, obj : obj}) ; 
+    } 
+    else{
+      console.log("Object not found !") ; 
+      res.json({boolean : false});  
+    }
+
+  } catch (error) { 
+    console.log("Error while fetching participants !") ; 
+    res.json({boolean:false}) ; 
+  }
+}); 
 
 
 module.exports = user ; 
