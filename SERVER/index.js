@@ -517,7 +517,7 @@ io.on("connection",(socket)=>{
                 for(let i = 0 ; i < data.members.length ; i++) {
                     const SocketId = userSocketMap[data.members[i]] ; 
                     if(SocketId && SocketId != userSocketMap[data.userdetails._id]) {
-                        io.to(SocketId).emit("receive_messages",data) ;                                                     // Ignore the senders id because its creating 2 entries !
+                        io.to(SocketId).emit("receive_messages",data) ;                                                   
                     }
                     else{
                         // do not emit
@@ -761,12 +761,6 @@ io.on("connection",(socket)=>{
     // LEAVE GROUP
     socket.on("Leave:Group", async (data) => { // {userdetails,selectedGroupId,members}
         console.log(`Person leaving ID : ${data.userdetails} ,\n THE GROUP ID : ${data.selectedGroupId}, \n MEMBERS : ${data.members}`);
-        // in this function when a person leave a group : 
-        // update all the participants that a person just left 
-        // return the group object from Groups model to all the participants with updated group object : 
-        // also strore a message in db that this person just left the group ! 
-        // if participants are online :
-        // return {group : Group , message : this person just left}
         const obj = await Leave_Group(data) ; 
         console.log("Receiving boolean true", obj.boolean); 
         if(obj.boolean) {
@@ -814,6 +808,33 @@ io.on("connection",(socket)=>{
     });
 
 
+
+
+
+    // X-----------------------------------------------WEBRTC---------------------------------------------X
+    // Handle ICE Candidates 
+    socket.on("ice:candidate", (data) => {
+        console.log(`Forwarding Ice candidate from ${data.from} to ${data.to}`) ; 
+        io.to(data.to).emit("ice:candidate", {candidate: data.candidate}) ;
+    });
+
+    // Handle Incoming call 
+    socket.on("user:call" , (data)=> {
+        console.log(`Call from ${data.from} to ${data.to}`) ; 
+        io.to(data.to).emit("incoming:call", {from : data.from , offer : data.offer}) ;
+    });
+
+    // Handke acceptance 
+    socket.on("call:accepted", (data) => {
+        console.log(`Call accepted by ${data.to}`) ; 
+        io.to(data.to).emit("call:accepted", {answer : data.answer}) ;
+    });
+    // End call 
+    socket.on("End:Call", (data) => {
+        io.to(data.to).emit("call:ended", data) ; 
+    });
+    // X--------------------------------------------------------------------------------------------------X 
+    
     // DISCONNECT
     socket.on("disconnect", () => {
         const userId = Object.keys(userSocketMap).find(key => userSocketMap[key] === socket.id) ; // find userId
@@ -834,9 +855,3 @@ server.listen(PORT,(err)=>{
         console.log(`SERVER RUNNING ON PORT : ${4000}`);
     }
 }); 
-
-
-
-// what will happen when we do not emit db entries will not work 
-// only the user will get changes in its ui but in the whole logic in backend because  
-// some error occured while saving in backend !

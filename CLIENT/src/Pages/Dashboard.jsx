@@ -8,6 +8,16 @@ import { useNavigate } from 'react-router-dom';
 
 
 const Dashboard = () => {
+  const [myStream, setMyStream] = useState(null);                     // My stream : capture my data 
+  const [remoteStream, setRemoteStream] = useState(null);             // receiving stream : capture receiving stream
+  const peerConnection = useRef(null);                                // contain the connection details : Q3) 
+  const localVideoRef = useRef();                                     // my video                         Q4)
+  const remoteVideoRef = useRef();  
+  const [inCall,setInCall] = useState(false) ;
+  const [inCommingCall,setIncommingCall] = useState(false) ;            
+  const [inCommingData,setIncommingData] = useState({}) ;              // user name , image , id
+  const [connectionSocketId,setConnectionId] = useState("") ; 
+
   // CONTACTS !
   const functionContacts = async (id) => {
     try {
@@ -42,7 +52,7 @@ const Dashboard = () => {
         const response = await axios.get("http://localhost:4000/user/personal" , {withCredentials : true}) ; 
         if(response.data.boolean) { //  logged in 
           setUserDetails(response.data.user) ; 
-          functionContacts(response.data.user._id) ; // CHECK POINT 4 : CONTACTS 
+          functionContacts(response.data.user._id) ; 
           // ALSO FETCH CHATARRAY DASHBOARD
           // 1) Emit only after token verification
           socket.emit("user_online", response.data.user._id);       // CHECK POINT 1
@@ -61,17 +71,8 @@ const Dashboard = () => {
           });
           // 4) RECEIVE MESSAGES 
           socket.on("receive_messages", (data) => {
-            // console.log(`FROM : ${data.userdetails.name} & its id : ${data.userdetails._id}, SOCKET ID :${data.friendSocketId} , Message : ${data.message}`);
             console.log(`RECEIVING ! MY SOCKET ID : ${data.friendSocketId} ,\n MY ID :${data.friend_data._id} ,\n MESSAGE : ${data.message} ,\n FROM : ${data.userdetails._id} ,\n IS GROUP : ${data.isGroup} ,\n MEMBERS : ${data.members}, \n GROUP ID : ${data.GroupId}`) ; 
-
-            // -------------------------------------------CHAT BAR LOGIC IGNORE FOR NOW --------------------------------------------------------------- : 
-            // if chat does not exists and other user sends me message : i.e FROM : _id not found in chat array 
-              // push the new object in chatArray of other User !
-            // Run the sort function of chatArray Dashboard based on latest message time : 
-            // ---------------------------------------------------------------------------------------------------------------------------------------- :
-
-            // in here if data.userdetails._id == friend_data._id then append that message to chat array
-            // console.log(data.GroupId , selectedGroupId) ; // why this function down below is not working when ids are same ? 
+            
             if(data.isGroup) { // i.e group selected 
               console.log(`DATA.GROUPID : ${data.GroupId} , SELECTED GROUP ID : ${friendIdRef.current}` ) ; 
               console.log(data.GroupId == friendIdRef.current) ; 
@@ -83,8 +84,7 @@ const Dashboard = () => {
                   image : data.senderImage
                 }]);
               }
-            }
-            else{ // group is not selected 
+            } else{ // group is not selected 
               if(data.userdetails._id == friendIdRef.current){ 
                 setChatsArray((chats)=>[...chats,{
                   senderId : data.userdetails._id ,
@@ -178,6 +178,84 @@ const Dashboard = () => {
             console.log("updated groups of users : ", data) ; 
             setGroups(data) ; 
           });
+
+          // X-----------------------------------------------WEBRTC ----------------------------------------X
+          // (I) Setting the ice candidate of the receiver ! 
+          socket.on("ice:candidate", async (data) => {
+            console.log("Received ICE candidates from peer : ", data.candidate) ; 
+            if(peerConnection.current && data.candidate) { // connection exists and candidate != undefined || null
+              try{
+                await peerConnection.current.addIceCandidate(new RTCIceCandidate(data.candidate)) ; // making the Ice candidate connection Q6,7,8
+                console.log("Successfully added the ICE candidate !") ; 
+              } catch (error) {
+                console.log("Failed to add Ice candidate !", error) ; 
+              }
+            }
+          });
+
+          // (II) RECEIVING INCOMMING CALL 
+          socket.on("incoming:call", async (data) => {
+            console.log("incoming : call from : " , data.from) ; 
+            // SETTING STREAM : 
+            const stream = await navigator.mediaDevices.getUserMedia({video : true , audio : true}) ; 
+            setMyStream(stream) ; 
+            localVideoRef.current.srcObject = stream ; 
+            // PEER CONNECTION 
+            peerConnection.current = new RTCPeerConnection({
+              iceServers : [{ urls : "stun:stun.l.google.com:19302"}]
+            }) ; 
+            // ADD TRACKS TO PEER CONNECTION 
+            stream.getTracks().forEach((track) => peerConnection.current.addTrack(track, stream)) ; 
+            // ICE CANDIDATES : 
+            peerConnection.current.onicecandidate= (event) => {
+              if(event.candidate) {
+                console.log("Sending ICE candidate to peer", event.candidate) ; 
+                socket.emit("ice:candidate", {to : data.from , candidate: event.candidate}) ; 
+              } else {
+                console.log("All Ice candidates have been sent !") ; 
+              }
+            };
+            // REMOTE STREAM 
+            peerConnection.current.ontrack = (event) => {
+              console.log("Received remote stream : ", event.streams[0]) ; 
+              setRemoteStream(event.streams[0]) ; 
+              if(remoteVideoRef.current) {
+                remoteVideoRef.current.srcObject = event.streams[0] ; 
+                console.log("Remote video stream attached to <video> element !") ; 
+              } else{ 
+                console.log("Remote video ref is not set !") ; 
+              }
+            }
+            // RECEIVE OFFER FROM CALLER remoteDescription 
+            await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.offer)) ; 
+            // CREATE ANSWER : SET LOCALDESCRIPTION ANSWER :  
+            const answer = await peerConnection.current.createAnswer() ; 
+            await peerConnection.current.setLocalDescription(answer) ; 
+            setInCall(true) ; 
+            setConnectionId(data.from) ; // makes sure that they are in call
+            // SEND THE ANSWER BACK TO THE CALLER 
+            socket.emit("call:accepted", {to: data.from , answer}) ; 
+          }); 
+
+          // (III) CALL ACCEPTED : set remoteDescription with answer
+          socket.on("call:accepted", async (data) => {
+            console.log("Call accepted with answer : ", data.answer) ; 
+            if(peerConnection.current) {
+              await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.answer)) ; 
+            }
+            else{
+              console.log("Peer Connection is not initialized") ; 
+            }
+          });   
+          
+          // (IV) END CALL 
+          socket.on("call:ended", (data)=> {
+            console.log("CALL ENDED BY USER");
+            setInCall(false) ; 
+            setConnectionId("") ; // empty whenver disconnect
+            resetCallState() ; 
+          });
+          // X----------------------------------------------------------------------------------------------X
         }
         else{
           navigate('/') ;
@@ -188,6 +266,13 @@ const Dashboard = () => {
       console.log("ERROR WHILE FETCHING USER DETAILS !") ;
     }
     return () => {
+      // also emit to destroy peer connection of other user !
+      // also emit to destroy peer connection of other user !
+      socket.emit("End:Call", {to:connectionSocketId,from:onlineUsers[userdetails._id]}) ; 
+      setInCall(false) ; 
+      setConnectionId("") ; // empty whenver disconnect
+      resetCallState() ;
+       
       socket.disconnect() ; 
       setMySocketId("") ; 
     }
@@ -318,13 +403,7 @@ const Dashboard = () => {
   }
   const handleSent = async (e) => {
     e.preventDefault() ; 
-    console.log(`TO FRIEND SOCKET ID : ${friendSocketId} ,\n FRIEND ID : ${friend_data._id},\n FROM : ${userdetails._id},\n  Message : ${message} ,\n Is group selected ${isGroupSelected} ,\n Group Id : ${selectedGroupId}`) ; 
-
-    // IN HERE : 
-    // if chat does not exists and other user sends me message : i.e FROM : _id not found in chat array 
-      // push the new object in chatArray of other User !
-    // Run the sort function of chatArray Dashboard based on latest message time : 
-  
+    console.log(`TO FRIEND SOCKET ID : ${friendSocketId} ,\n FRIEND ID : ${friend_data._id},\n FROM : ${userdetails._id},\n  Message : ${message} ,\n Is group selected ${isGroupSelected} ,\n Group Id : ${selectedGroupId}`) ;   
     
     if(userdetails._id != friendIdRef.current) {                      // append it to chat array too only If selected friend is != userId
       setChatsArray((chats)=>[...chats,{
@@ -393,16 +472,7 @@ const Dashboard = () => {
     console.log("UNFOLLOW : ",id) ; 
     socket.emit("Unfollow",{friend_id : id , user_id : userdetails._id , userSocketId : MySocketId , friendSocketId : onlineUsers[id] || null}) ;
   }
-  // DELETE CHATS 
-    const DeleteChats = (id) => {
-      console.log("DELETING CHATS OF THIS ID : ", id) ; 
-      // io. emit this command : 
-      // in backend receive 
-      // check if the chats exists : 
-      // remove from messages first : 
-      // remove chat id 
-      // return setCharArray to null
-    }
+
 
     // ALSO HELP TO REMOVE FROM SEARCH BAR
     useEffect(() => {
@@ -560,7 +630,6 @@ const Dashboard = () => {
       setUpdatedParticipants(updatedParticipants.filter( (ele) => ele._id != e._id) ) ; 
     }
     else{
-      // updatedParticipants = [...contactId] ; 
       setUpdatedParticipants((prev)=>[...prev,e]) ; 
     }
   };
@@ -577,20 +646,107 @@ const Dashboard = () => {
     }]);
     // updatedParticipants ! 
     socket.emit("Update:Group",{ GroupId : isGroupSelected ? selectedGroupId : "" , updatedParticipants : updatedParticipants , members :  selectedGroupId ? Groups.find(group => group._id === selectedGroupId)?.participants || []: []  }) ;    
-    // now in this functionality what i want to do is that 
-    // 1) save previous members 
-    // 2) save new members 
-    // 3) Update the group members 
-    // 4) emit the new groups contacts from backend to all the new and previous members !  
   }
+
+
+
+
+
+
+
+
+
+
+
+  // X-----------------------------WEBRTC-----------------------------------------X
+
+
+  const handleCall = async () => {
+    // console.log("TO : ",friend_data) ; 
+    // console.log("TO SOCKET ID : ",onlineUsers[friend_data._id]) ; 
+    // console.log("FROM : ",userdetails) ; 
+    // console.log("FROM SOCKET ID : ",onlineUsers[userdetails._id]) ; 
+
+    const stream = await navigator.mediaDevices.getUserMedia({video : true, audio : true}) ; 
+    setMyStream(stream) ; 
+
+    localVideoRef.current.srcObject = stream ; 
+
+    peerConnection.current = new RTCPeerConnection({
+      iceServers : [{ urls: "stun:stun.l.google.com:19302" }]
+    });
+
+    stream.getTracks().forEach((track) => peerConnection.current.addTrack(track,stream))
+
+    peerConnection.current.onicecandidate = (event) => {
+      if(event.candidate) {
+        console.log("Sending Ice candidate ro peer : ", event.candidate) ; 
+        socket.emit("ice:candidate", {to : onlineUsers[friend_data._id], candidate : event.candidate}) ; 
+      }
+      else{
+        console.log("All ice candidates have been sent !") ; 
+      }
+    };
+
+    peerConnection.current.ontrack = (event) => {
+      console.log("Received remote Stream : ", event.streams[0]) ;
+      setRemoteStream(event.streams[0]) ; 
+      if(remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = event.streams[0] ; 
+        console.log("Remote Video Stream attached to <video> element") ; 
+      }
+      else{
+        console.log("Remote video red is not set") ; 
+      }
+    };
+    
+    const offer = await peerConnection.current.createOffer() ; 
+    await peerConnection.current.setLocalDescription(offer) ; 
+    socket.emit("user:call", {to : onlineUsers[friend_data._id], from : onlineUsers[userdetails._id], offer}) ; 
+    
+    setInCall(true) ; 
+    setConnectionId(onlineUsers[friend_data._id]) ; 
+  };
+  // X----------------------------------------------------------------------------X
+
+  useEffect(()=>{
+    console.log("PeerConnection",peerConnection.current) ; 
+  },[peerConnection.current]) ; 
+
+  const endCall = () => {
+    // also emit to destroy peer connection of other user !
+    socket.emit("End:Call", {to:connectionSocketId,from:onlineUsers[userdetails._id]}) ; 
+    setInCall(false) ; 
+    setConnectionId("") ; // empty whenver disconnect
+    resetCallState() ;
+  };
+
+
+
+  // END CALL RESET CALL STATE FUNCTION
+  const resetCallState = () => {
+    if (peerConnection.current) {
+      peerConnection.current.close();
+      peerConnection.current = null;
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    if (myStream) {
+      myStream.getTracks().forEach((track) => track.stop());
+      setMyStream(null);
+    }
+    setRemoteStream(null);
+  };
 
   return (
     <>
     <div className='profile'>
       <img src={userdetails.image} alt="avatar" onClick={()=>{navigate('/profile')}} />
-      {/* <p className='notification_counter'>1</p> */}
       <p>{userdetails.name}</p>
-      {/* <p>{MySocketId}</p> After Login : .connect id will be set AT PAGE REFRESH .emit id will set */}
       <p>
         {userdetails.createdAt
           ? new Date(userdetails.createdAt).toLocaleString('en-GB', {
@@ -749,13 +905,11 @@ const Dashboard = () => {
       <div className='array_div'>
         {ReceiveRequest.length > 0 ? (
           ReceiveRequest.map((ele,index) => (
-              <div key={index} className={`user-card contacts_section ${BlockedContacts.some(req => req._id == ele._id) ? 'display_none' : ''} ${BlockedBy.some(req => req._id == ele._id) ? 'display_none' : ""}`} > {/* If a person is blocked we will not display that person && if user is blocked by someOne we will not diplay thet person too*/}
+              <div key={index} className={`user-card contacts_section ${BlockedContacts.some(req => req._id == ele._id) ? 'display_none' : ''} ${BlockedBy.some(req => req._id == ele._id) ? 'display_none' : ""}`} >
                   <div className='box1'>
                     <img src={ele.image} alt='User Avatar' />
                     <p>{ele.name}</p>
                     <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
-                  {/* this means also assign another class , 
-                  we can assign 2 classes like this className="status online_status" */}
                   </div>
                   <div className='box2'>
                     <button onClick={()=>{Accept(ele._id)}}>Accept</button>
@@ -774,13 +928,11 @@ const Dashboard = () => {
       <div className='array_div'>
         {BlockedContacts.length > 0 ? (
           BlockedContacts.map((ele,index) => (
-              <div key={index} className={`user-card contacts_section`} > {/* If a person is blocked we will not display that person && if user is blocked by someOne we will not diplay thet person too*/}
+              <div key={index} className={`user-card contacts_section`} >
                   <div className='box1'>
                     <img src={ele.image} alt='User Avatar' />
                     <p>{ele.name}</p>
                     <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
-                  {/* this means also assign another class , 
-                  we can assign 2 classes like this className="status online_status" */}
                   </div>
                   <div className='box2'>
                     <button onClick={()=>{handleUnblock(ele._id)}}>Unblock</button>
@@ -807,7 +959,7 @@ const Dashboard = () => {
           <img src={friend_data.image} alt="" />
           <p>{friend_data.name}</p>
           <div className={`status ${onlineUsers[friend_data._id] ? 'online_status' : ''}`}></div>
-          <button className={`${onlineUsers[friend_data._id] && userContacts.some(req => req._id == friend_data._id) && friend_data._id != userdetails._id ? '' : 'display_none'}`} >
+          <button className={`${onlineUsers[friend_data._id] && userContacts.some(req => req._id == friend_data._id) && friend_data._id != userdetails._id ? '' : 'display_none'}`} onClick={handleCall} >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-camera-video-fill" viewBox="0 0 16 16">
               <path d="M0 5a2 2 0 0 1 2-2h7.5a2 2 0 0 1 1.983 1.738l3.11-1.382A1 1 0 0 1 16 4.269v7.462a1 1 0 0 1-1.406.913l-3.111-1.382A2 2 0 0 1 9.5 13H2a2 2 0 0 1-2-2z"/>
             </svg>
@@ -873,6 +1025,14 @@ const Dashboard = () => {
         ))}
       </div>
       <button onClick={Handle_group_update}>SAVE</button>
+    </div>
+
+    <div className={`WEBRTC ${inCall ? "" : "display_none"}`} >
+      <h2>Incomming !</h2>
+      <video ref={localVideoRef} autoPlay playsInline style={{ width: "300px" }} className='my_video'/>
+      <video ref={remoteVideoRef} autoPlay playsInline style={{ width: "300px" }} className='friends_video'/> 
+      <button className={`acceptcall ${inCommingCall ? "" : "display_none"} ${inCall ? "display_none" : ""}`}>Accept</button>
+      <button className={`endcall ${peerConnection.current ? "" : "display_none"}`} onClick={endCall}>End</button>
     </div>
     </>
   )
