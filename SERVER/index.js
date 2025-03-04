@@ -345,6 +345,8 @@ const DeleteGroup = async (data) => { // {id,selectedGroupId,participants:} // w
         return {boolean : false} ; // return false because then the parent function will not return anything .... 
     }
 }
+
+// UPDATE GROUPS COLLECTION OF USERS FROM FRIENDS MODEL 
 const UpdatedGroups = async (data) => { // {user_id , selectedGroupId}
     const {user_id , selectedGroupId} = data ; 
     try {
@@ -394,7 +396,7 @@ const Leave_Group = async (data) => {
     }
 };
 
-const leave_updated_group = async (id) => {
+const leave_updated_group = async (id) => {             // IGNORE THE NAME : BASICALLY THIS FUNCTION IS FETCHING USER'S GROUPS ARRAY OF FRIENDS MODEL
     try {
         console.log(id)  ;
         const user = await friendsModel.findOne({user_id : id}).populate("Groups", "name image participants admin blocked_members") ; 
@@ -409,6 +411,64 @@ const leave_updated_group = async (id) => {
 }
 
 
+const AddOrRemoveMembers = async ({GroupId, updatedParticipants, members}) => { // NOTE : members : array of strings , updatedParticipants : array of objects
+    console.log("ADDING OR REMOVING MEMBRES :,\n PREVIOUS MEMBERS ",members," \n NEW MEMBERS : ",updatedParticipants) ; 
+    // update the group in here for now 
+
+    try {
+        const group = await groupModel.findOne({_id : GroupId}) ; 
+        if(group) {
+            // Step 1: Identify members to remove
+            const membersToRemove = group.participants.filter(
+                (memberId) => !updatedParticipants.some((participant) => participant._id == memberId)
+            );
+            console.log("Members to Remove:", membersToRemove);
+
+            // Step 2: Identify members to add
+            const membersToAdd = updatedParticipants.filter(
+                (participant) => !group.participants.some((memberId) => memberId == participant._id)
+            );
+            console.log("Members to Add:", membersToAdd); // NOTE : array of object !
+
+    
+            // STEP 3 : UPDATE THE GROUP ARRAY 
+            group.participants = [] ; 
+            for(let i = 0 ; i < updatedParticipants.length ; i++) {
+                group.participants.push(updatedParticipants[i]._id) ; // note update participants is an array of object 
+            }
+            await group.save() ; 
+
+            // STEP 4 : REMOVE THIS GROUP ID FROM THE ARRAY OF MEMBERS TO REMOVE
+            for(let i = 0 ; i < membersToRemove.length ; i++) {
+                const user = await friendsModel.findOne({user_id : membersToRemove[i]}) ; 
+                if(user) {
+                    user.Groups = user.Groups.filter((id) => id != GroupId) ;  // remove this group id 
+                    await user.save() ; 
+                }
+            }
+            // STEP 5 : APPEND THIS GROUP ID TO THE GROUP ARRAY OF NEW USERS 
+            for(let i = 0 ; i < membersToAdd.length ; i++) {
+                const user = await friendsModel.findOne({user_id : membersToAdd[i]._id}) ; 
+                if(user) {
+                    user.Groups.push(GroupId) ; // append a new group id 
+                    await user.save() ; 
+                }
+
+            }
+
+            return {boolean : true , group : group } ; 
+
+        }
+        else{
+            console.log("Group Not found for adding or removing members !") ; 
+        }
+    } catch (error) {
+        console.log("Error while Adding or remoing participants from the Groups !",error) ; 
+    }
+    return {boolean : true };
+};
+
+ 
 const server = createServer(app) ; 
 const io = new Server(server,{
     cors : {
@@ -723,6 +783,33 @@ io.on("connection",(socket)=>{
         }   
         else{   
             console.log("Error while leaving Group !") ; 
+        }
+    });
+    // UPDATE GROUP : EMIT TO : "Group:Updated"
+    socket.on("Update:Group", async (data)=>{   // GroupId , , updatedParticipants , members ; NOTE : members : array of strings whereas updatedParticipants = array of objects {_id , name etc ...}   
+        const obj = await AddOrRemoveMembers({GroupId : data.GroupId, updatedParticipants : data.updatedParticipants , members : data.members }) ; 
+        if(obj.boolean) {
+            for(let i = 0 ; i < data.updatedParticipants.length ; i++) {
+                const user = await leave_updated_group(data.updatedParticipants[i]._id) ; 
+                if(user.boolean) {
+                    const socketId = userSocketMap[data.updatedParticipants[i]._id] ; 
+                    if(socketId) {
+                        io.to(socketId).emit("Group:Updated",user.groups) ; 
+                    }
+                }
+            }
+            for(let i = 0 ; i < data.members.length ; i++) {
+                const user = await leave_updated_group(data.members[i]) ; 
+                if(user.boolean) {
+                    const socketId = userSocketMap[data.members[i]] ; 
+                    if(socketId) {
+                        io.to(socketId).emit("Group:Updated",user.groups) ; 
+                    }
+                }
+            }
+        }  
+        else{
+            console.log("Error while adding or removing members of the Group !") ; 
         }
     });
 

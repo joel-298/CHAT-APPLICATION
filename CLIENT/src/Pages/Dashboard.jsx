@@ -171,23 +171,13 @@ const Dashboard = () => {
           }); 
           // 21) GROUP left
           socket.on("Group:Left", (data) => { // {message automatically , Groups : populated !}
-            // WHAT I NEED IN THIS FUNCTION : 
-            // 1) to update the ui of the person who just left therefore : 
-                // set its friendData();  
-            // 2) show a message on other users who has friendIdRef.current == grouPiD WHO HAS JUST LEFT : 
-               // UPDATE THERE CHAT ARRAY WITH THE MESSAGE : 
-            // 3) UPDATE THIS GROUP PARTICIPANTS :
-              // -> 1st this they are reciving this group from freinds model 
-              // -> friends model in joining group object which contains the participants 
-              // -> THEREFORE WE ARE GOING TO REFRESH THE WHOLE GROUPS ARRAY OF THIS PERSON WHEN THIS PERSON LEAVES !
-
-            // REQUIREMENTS : 
-            // receive message , 
-            // receive the group id , 
-            // receive the friendModel Groups populated ...
             console.log("updated groups of users : ", data) ; 
             setGroups(data) ; 
           }) ;
+          socket.on("Group:Updated", (data) => {
+            console.log("updated groups of users : ", data) ; 
+            setGroups(data) ; 
+          });
         }
         else{
           navigate('/') ;
@@ -575,21 +565,23 @@ const Dashboard = () => {
     }
   };
   const Handle_group_update = () => { 
-    // console.log(updatedParticipants) ; 
     setEditGroup([]) ; 
     setUpdatedParticipants([]) ; 
     // io emit to server for message ! 
-    socket.emit("message",{friendSocketId,friend_data,message : "Updated Group",userdetails,isGroup : isGroupSelected, members :  selectedGroupId ? Groups.find(group => group._id === selectedGroupId)?.participants || []: [] ,  GroupId : isGroupSelected ? selectedGroupId : "" , senderImage : userdetails.image , updatedParticipants : updatedParticipants}) ; // NOTE :in here members = previous participants : array of ids , and updatedParticipants :  ARRAY OF OBJECTS ! : [{_id,image},{_id,image}]
-    // update my personal chat array !
-    setChatsArray((chats)=>[...chats,{
+    socket.emit("message",{ friendSocketId , friend_data , message : "Updated Group" , userdetails , isGroup : isGroupSelected, members :  selectedGroupId ? Groups.find(group => group._id === selectedGroupId)?.participants || []: [] ,  GroupId : isGroupSelected ? selectedGroupId : "" , senderImage : userdetails.image , updatedParticipants : updatedParticipants}) ; // NOTE :in here members = previous participants : array of ids , and updatedParticipants :  ARRAY OF OBJECTS ! : [{_id,image},{_id,image}]
+    setChatsArray((chats)=>[...chats,{     // update my personal chat array !
       senderId : userdetails._id ,
       text : "Updated Group" , 
       createdAt : Date.now() ,
       image : userdetails.image
     }]);
-    // updatedParticipants !
-    // socket.emit("Update:Group",{}) ;  // WORKING ON LAST SOCKET IO PART OF GROUPS !
-  
+    // updatedParticipants ! 
+    socket.emit("Update:Group",{ GroupId : isGroupSelected ? selectedGroupId : "" , updatedParticipants : updatedParticipants , members :  selectedGroupId ? Groups.find(group => group._id === selectedGroupId)?.participants || []: []  }) ;    
+    // now in this functionality what i want to do is that 
+    // 1) save previous members 
+    // 2) save new members 
+    // 3) Update the group members 
+    // 4) emit the new groups contacts from backend to all the new and previous members !  
   }
 
   return (
@@ -872,7 +864,7 @@ const Dashboard = () => {
       <div><button onClick={()=>{setEditGroup({})}}>close</button></div>
       <div className="members">
         {getAllParticipants().map((ele,index)=>(
-          <div className='participants_card' key={index}>
+          <div className={`participants_card ${ele._id == userdetails._id ? "display_none" : ""}`} key={index}>
             <input type="checkbox" checked={updatedParticipants.some(i => i._id === ele._id)} onChange={()=>{handleChangeUpdatedParticipants(ele)}}/>&nbsp;&nbsp;
             <img src={ele.image} />&nbsp;&nbsp;
             <p>{ele.name}</p>
