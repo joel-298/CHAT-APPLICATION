@@ -440,8 +440,6 @@ const Dashboard = () => {
     const [members,setMembers] = useState([]) ;                       // ADD MEMBERS TO YOUR NEWLY CREATED GROUP !
 
     const [selectedGroupId,setSelectedGroupId] = useState("") ;       // ID FOR EDITING GROUP ONLY ! // add more members remove members etc etc 
-    // const [BlockedArrayGroup,setBlockedArrayGroup] = useState([]) ;   // will contain blocked members of that group 
-    // const [Kick, setKick] = useState([]) ;                            // Do not need a db in backend , just pass this array to kick someone from the group !
 
 
     // ADDING AND REMOVING MEMBERS
@@ -459,11 +457,6 @@ const Dashboard = () => {
     // CREATING GROUP 
     const CreateGroup = () => {
       console.log("Selected Members : ", members) ; 
-      // while creating group ! : u are going to filter blocked contacts and blocked by contacts : 
-      // BUT THEY CAN JOIN THROUGH GROUP INVITATION ! 
-      // AND THEY CAN ALSO CHAT AND U CAN SEE THEIR CHATS TOO AND SEND CHATS TOO ! 
-      // UNTIL AND UNLESS ADMIN BANS THEM FROM GROUP ! 
-      // BANING MENS REMOVING THAT PERSON FROM THE GROUP ALONG WITH THAT PERSON CANNOT JOIN THE GROUP EVEN THROUGH LINK BECAUSE THAT PERSON IS IN BLOCKED ARRAY OF GROUP
       let filteredMembers = members.filter((memberId) => {
         const isBlockedContact = BlockedContacts.some((blocked) => blocked._id === memberId);
         const isBlockedBy = BlockedBy.some((blocked) => blocked._id === memberId);
@@ -564,9 +557,7 @@ const Dashboard = () => {
         } 
       }
     };
-    const Handle_group_update = () => { 
-      console.log(updatedParticipants) ; 
-    }
+    // combined : group participants and contacts of admin
     const getAllParticipants = () => {
       const participantsNotInContacts = updatedParticipants.filter(                            // Participants not in userContacts
         participant => !userContacts.some(contact => contact._id === participant._id)
@@ -574,15 +565,32 @@ const Dashboard = () => {
       return [...userContacts, ...participantsNotInContacts];
     };
   // Handle checkbox change
-  const handleChangeUpdatedParticipants = (contactId) => {
-    setUpdatedParticipants((prevParticipants) => {
-      if (prevParticipants.includes(contactId)) {
-        return prevParticipants.filter((id) => id !== contactId);
-      } else {
-        return [...prevParticipants, contactId];
-      }
-    });
+  const handleChangeUpdatedParticipants = (e) => {
+    if(updatedParticipants.some(i => i._id == e._id)) {
+      setUpdatedParticipants(updatedParticipants.filter( (ele) => ele._id != e._id) ) ; 
+    }
+    else{
+      // updatedParticipants = [...contactId] ; 
+      setUpdatedParticipants((prev)=>[...prev,e]) ; 
+    }
   };
+  const Handle_group_update = () => { 
+    // console.log(updatedParticipants) ; 
+    setEditGroup([]) ; 
+    setUpdatedParticipants([]) ; 
+    // io emit to server for message ! 
+    socket.emit("message",{friendSocketId,friend_data,message : "Updated Group",userdetails,isGroup : isGroupSelected, members :  selectedGroupId ? Groups.find(group => group._id === selectedGroupId)?.participants || []: [] ,  GroupId : isGroupSelected ? selectedGroupId : "" , senderImage : userdetails.image , updatedParticipants : updatedParticipants}) ; // NOTE :in here members = previous participants : array of ids , and updatedParticipants :  ARRAY OF OBJECTS ! : [{_id,image},{_id,image}]
+    // update my personal chat array !
+    setChatsArray((chats)=>[...chats,{
+      senderId : userdetails._id ,
+      text : "Updated Group" , 
+      createdAt : Date.now() ,
+      image : userdetails.image
+    }]);
+    // updatedParticipants !
+    // socket.emit("Update:Group",{}) ;  // WORKING ON LAST SOCKET IO PART OF GROUPS !
+  
+  }
 
   return (
     <>
@@ -730,7 +738,7 @@ const Dashboard = () => {
                 <p>{ele.name}</p>
               </div>
               <div className='box2'>
-                <button className={`${ele.admin == userdetails._id ? "" : "display_none"}`} onClick={()=>{EditId(ele._id,ele.name,ele.image,ele.admin), setViewParticipants([]), setView({})}}>Edit</button>
+                <button className={`${ele.admin == userdetails._id ? "" : "display_none"}`} onClick={()=>{EditId(ele._id,ele.name,ele.image,ele.admin), setViewParticipants([]), setView({}), handleFriendData(ele._id,"groups",true)}} >Edit</button>
                 <button onClick={()=>{viewMembers(ele._id,ele.name,ele.image), setEditGroup({})}}>view</button>
               </div>
             </div>
@@ -865,7 +873,7 @@ const Dashboard = () => {
       <div className="members">
         {getAllParticipants().map((ele,index)=>(
           <div className='participants_card' key={index}>
-            <input type="checkbox" checked={updatedParticipants.some(i => i._id === ele._id)}/>&nbsp;&nbsp;
+            <input type="checkbox" checked={updatedParticipants.some(i => i._id === ele._id)} onChange={()=>{handleChangeUpdatedParticipants(ele)}}/>&nbsp;&nbsp;
             <img src={ele.image} />&nbsp;&nbsp;
             <p>{ele.name}</p>
             <div className={`status ${onlineUsers[ele._id] ? 'online_status' : ''}`}></div> 
