@@ -8,17 +8,35 @@ import { useNavigate } from 'react-router-dom';
 
 
 const Dashboard = () => {
+  // VIDEO USESTATES : 
   const [myStream, setMyStream] = useState(null);                     // My stream : capture my data 
   const [remoteStream, setRemoteStream] = useState(null);             // receiving stream : capture receiving stream
   const peerConnection = useRef(null);                                // contain the connection details : Q3) 
   const localVideoRef = useRef();                                     // my video                         Q4)
   const remoteVideoRef = useRef();  
-  const [inCall,setInCall] = useState(false) ;
-  const [inCommingCall,setIncommingCall] = useState(false) ;            
-  const [inCommingData,setIncommingData] = useState({}) ;              // user name , image , id
-  const [connectionSocketId,setConnectionId] = useState("") ; 
+  
+  // CALL RELATED USESTATES 
+  const [inCall,setInCall] = useState(false) ;                         // IN CALL OR NOT  
+  const [connectionId,setConnectionId] = useState("") ;                // CALLER ID : we will obtain its socket id later for further end call functionality !
+  const [friendDisconnected,setFriendDisconnected] = useState(true) ;  // To show no one in the call please leave !
 
-  // CONTACTS !
+  const [inCommingData,setIncommingData] = useState({}) ;              // CALLER : name , image , id
+  const [Offer,setIncommingOffer] = useState(null) ;                   // Incomming offer 
+
+  const [Calling, setCalling] = useState(false) ;                      // CALLING SOMEONE  
+                           
+  const [inCommingCall,setIncommingCall] = useState(false) ;           // RECEIVING CALL ? 
+
+
+
+
+
+
+
+
+
+
+  // CONTACTS 
   const functionContacts = async (id) => {
     try {
       console.log("User contacts Id",id) ; 
@@ -42,6 +60,11 @@ const Dashboard = () => {
       console.log("ERROR WHILE FETCHING USER CONTACTS !") ; 
     }
   };
+
+
+
+
+
 
   // CONNECT 
   const navigate = useNavigate() ; 
@@ -174,13 +197,13 @@ const Dashboard = () => {
             console.log("updated groups of users : ", data) ; 
             setGroups(data) ; 
           }) ;
+          // 22) RECEIVE UPDATED GROUPS OF USER : (when someone leaves or joins or if user is added into a new group or removed from a group)
           socket.on("Group:Updated", (data) => {
             console.log("updated groups of users : ", data) ; 
             setGroups(data) ; 
           });
-
-          // X-----------------------------------------------WEBRTC ----------------------------------------X
-          // (I) Setting the ice candidate of the receiver ! 
+                                                                                        // W E B R T C 
+          // (23) Setting the ice candidate of the receiver ! 
           socket.on("ice:candidate", async (data) => {
             console.log("Received ICE candidates from peer : ", data.candidate) ; 
             if(peerConnection.current && data.candidate) { // connection exists and candidate != undefined || null
@@ -192,69 +215,60 @@ const Dashboard = () => {
               }
             }
           });
-
-          // (II) RECEIVING INCOMMING CALL 
-          socket.on("incoming:call", async (data) => {
+          // (24) RECEIVING INCOMMING CALL 
+          socket.on("incoming:call", (data) => {                  // { from, offer, callerData }
             console.log("incoming : call from : " , data.from) ; 
-            // SETTING STREAM : 
-            const stream = await navigator.mediaDevices.getUserMedia({video : true , audio : true}) ; 
-            setMyStream(stream) ; 
-            localVideoRef.current.srcObject = stream ; 
-            // PEER CONNECTION 
-            peerConnection.current = new RTCPeerConnection({
-              iceServers : [{ urls : "stun:stun.l.google.com:19302"}]
-            }) ; 
-            // ADD TRACKS TO PEER CONNECTION 
-            stream.getTracks().forEach((track) => peerConnection.current.addTrack(track, stream)) ; 
-            // ICE CANDIDATES : 
-            peerConnection.current.onicecandidate= (event) => {
-              if(event.candidate) {
-                console.log("Sending ICE candidate to peer", event.candidate) ; 
-                socket.emit("ice:candidate", {to : data.from , candidate: event.candidate}) ; 
-              } else {
-                console.log("All Ice candidates have been sent !") ; 
-              }
-            };
-            // REMOTE STREAM 
-            peerConnection.current.ontrack = (event) => {
-              console.log("Received remote stream : ", event.streams[0]) ; 
-              setRemoteStream(event.streams[0]) ; 
-              if(remoteVideoRef.current) {
-                remoteVideoRef.current.srcObject = event.streams[0] ; 
-                console.log("Remote video stream attached to <video> element !") ; 
-              } else{ 
-                console.log("Remote video ref is not set !") ; 
-              }
-            }
-            // RECEIVE OFFER FROM CALLER remoteDescription 
-            await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.offer)) ; 
-            // CREATE ANSWER : SET LOCALDESCRIPTION ANSWER :  
-            const answer = await peerConnection.current.createAnswer() ; 
-            await peerConnection.current.setLocalDescription(answer) ; 
-            setInCall(true) ; 
-            setConnectionId(data.from) ; // makes sure that they are in call
-            // SEND THE ANSWER BACK TO THE CALLER 
-            socket.emit("call:accepted", {to: data.from , answer}) ; 
+            setIncommingCall(true) ;                                    // set incomming call 
+            setIncommingData(data.callerData) ;                         // set incomming data
+            setIncommingOffer(data.offer) ;                             // set incomming offer
+            resetCallState()  ;                                         // if already connected with someone and some's connection got lost
+            setCalling(false) ;
+            setInCall(false) ; 
           }); 
-
-          // (III) CALL ACCEPTED : set remoteDescription with answer
+          // (25) CALL ENDED BY CALLER BEFORE USER COULD ACCEPT OR REJECT IT !
+          socket.on("ended:incoming:call", (data) => {            // In comming call was ended by the caller
+            setConnectionId("") ; // makes sure that they are in call
+            setIncommingData({}) ;  
+            setIncommingOffer(null) ; 
+            setInCall(false) ; 
+            setIncommingCall(false) ;            
+            setConnectionId("") ; 
+            setFriendDisconnected(true) ; 
+            resetCallState() ;
+          });
+          // (26) END CALL 
+          socket.on("call:ended", (data)=> {
+            setConnectionId("") ; // makes sure that they are in call
+            setIncommingData({}) ; 
+            setFriendDisconnected(true) ; 
+            endCalling() ;
+            endCall() ; 
+            resetCallState() ;
+            console.log("FriendDisconnected Right ? : ",friendDisconnected) ; // this is not being displayed when the person who calls disconnects
+          });
+          socket.on("call:rejected", async (data) => {        
+            setConnectionId("") ; // makes sure that they are in call
+            setIncommingData({}) ; 
+            setFriendDisconnected(true) ; 
+            setIncommingCall(false) ; 
+            setIncommingData({}) ;
+            setIncommingOffer(null) ; 
+            setInCall(false) ; 
+            resetCallState() ;
+            setCalling(false) ;
+          });
+          // (27) CALL ACCEPTED : set remoteDescription with answer
           socket.on("call:accepted", async (data) => {
             console.log("Call accepted with answer : ", data.answer) ; 
             if(peerConnection.current) {
               await peerConnection.current.setRemoteDescription(new RTCSessionDescription(data.answer)) ; 
+              setInCall(true) ; 
+              setCalling(false) ; 
             }
             else{
               console.log("Peer Connection is not initialized") ; 
             }
-          });   
-          
-          // (IV) END CALL 
-          socket.on("call:ended", (data)=> {
-            console.log("CALL ENDED BY USER");
-            setInCall(false) ; 
-            setConnectionId("") ; // empty whenver disconnect
-            resetCallState() ; 
-          });
+          });  
           // X----------------------------------------------------------------------------------------------X
         }
         else{
@@ -265,20 +279,23 @@ const Dashboard = () => {
     } catch (error) {
       console.log("ERROR WHILE FETCHING USER DETAILS !") ;
     }
-    return () => {
-      // also emit to destroy peer connection of other user !
-      // also emit to destroy peer connection of other user !
-      socket.emit("End:Call", {to:connectionSocketId,from:onlineUsers[userdetails._id]}) ; 
-      setInCall(false) ; 
-      setConnectionId("") ; // empty whenver disconnect
-      resetCallState() ;
-       
+    return () => {    
+      endCall() ;  
+      endCalling() ; 
       socket.disconnect() ; 
       setMySocketId("") ; 
     }
   },[socket]);
 
-  // SEARCH
+
+
+
+
+
+
+
+
+  // SEARCH BAR FUNCTIONALITY !
   const [MySocketId,setMySocketId] = useState("") ;                                // USER SOCKET ID : 
   const [userdetails,setUserDetails] = useState({}) ;                              // USER DETAILS
   const [search_input,setSearchInput] = useState('') ;                             // SEARCH INPUT
@@ -317,6 +334,16 @@ const Dashboard = () => {
     }
   };
   
+
+
+
+
+
+
+
+
+
+
   // LOGOUT
   const handleLogout = async () => {
     try {
@@ -334,6 +361,16 @@ const Dashboard = () => {
       console.log(error) ; 
     }
   } 
+
+
+
+
+
+
+
+
+
+
 
   // SET FRIEND DATA AND SOCKET ID IF ONLINE
   const [friend_data,setFriendData] = useState({_id:"",image:"https://th.bing.com/th/id/OIP.tuHNM-LQLhwdfR01L2x-mQAAAA?w=400&h=400&rs=1&pid=ImgDetMain",name:"Avatar"}) ;
@@ -395,6 +432,34 @@ const Dashboard = () => {
     } 
   };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   // MESSAGE AND CHAT
   const [message,setMessage] = useState('') ;                                 // MESSAGE 
   const [chats,setChatsArray] = useState([]) ;                                // CHATS ARRAY   // CHECK POINT 3
@@ -417,6 +482,24 @@ const Dashboard = () => {
     socket.emit("message",{friendSocketId,friend_data,message,userdetails,isGroup : isGroupSelected, members : selectedGroupId ? Groups.find(group => group._id === selectedGroupId)?.participants || []: [],  GroupId : isGroupSelected ? selectedGroupId : "" , senderImage : userdetails.image}) ; 
     setMessage("") ; 
   };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   // CONNECTIONS : 
   const [userContacts,setUserContacts] = useState([]) ;               // USER CONTACTS ; 
@@ -474,16 +557,48 @@ const Dashboard = () => {
   }
 
 
-    // ALSO HELP TO REMOVE FROM SEARCH BAR
-    useEffect(() => {
-      if (search_input) { // Only trigger search if input is not empty
-        handleSearchInput({ target: { value: search_input } });
-      }
-    setReceiveRequest([...ReceiveRequest.filter(({ _id }) => 
-      !BlockedContacts.some(req => req._id == _id) && 
-      !BlockedBy.some(req => req._id == _id)
-    )]);
-    }, [BlockedContacts, BlockedBy]);
+  // ALSO HELP TO REMOVE FROM SEARCH BAR
+  useEffect(() => {
+    if (search_input) { // Only trigger search if input is not empty
+      handleSearchInput({ target: { value: search_input } });
+    }
+  setReceiveRequest([...ReceiveRequest.filter(({ _id }) => 
+    !BlockedContacts.some(req => req._id == _id) && 
+    !BlockedBy.some(req => req._id == _id)
+  )]);
+  }, [BlockedContacts, BlockedBy]);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -502,6 +617,7 @@ const Dashboard = () => {
     const [selectedGroupId,setSelectedGroupId] = useState("") ;       // ID FOR EDITING GROUP ONLY ! // add more members remove members etc etc 
 
 
+
     // ADDING AND REMOVING MEMBERS
     const handleCheckboxChange = (_id) => {
       setMembers((prevMembers) => {
@@ -513,6 +629,7 @@ const Dashboard = () => {
         }
       });
     };
+
 
     // CREATING GROUP 
     const CreateGroup = () => {
@@ -540,6 +657,7 @@ const Dashboard = () => {
       setCreatingGroupName("") ; 
     }
 
+
     // LEAVING GROUP 
     const LeaveGroup = () => {
       console.log(userdetails); 
@@ -547,6 +665,8 @@ const Dashboard = () => {
       socket.emit("Leave:Group", {userdetails,selectedGroupId,members : selectedGroupId ? Groups.find(group => group._id === selectedGroupId)?.participants || []: []}) ;                                                                              // for updating the groups of other users
       setFriendData({_id:"",image:"https://th.bing.com/th/id/OIP.tuHNM-LQLhwdfR01L2x-mQAAAA?w=400&h=400&rs=1&pid=ImgDetMain",name:"Avatar"}) ; // remove the group from the users ui 
     };
+
+
     // DELETING WHOLE GROUP 
     const DeleteGroup = (id) => {
       console.log(id) ; 
@@ -554,9 +674,6 @@ const Dashboard = () => {
       setIsGroupSelected(false) ; 
       setFriendData({_id:"",image:"https://th.bing.com/th/id/OIP.tuHNM-LQLhwdfR01L2x-mQAAAA?w=400&h=400&rs=1&pid=ImgDetMain",name:"Avatar"}) ;
     }
-
-
-
 
 
 
@@ -586,6 +703,10 @@ const Dashboard = () => {
         }
       }
     };
+
+
+
+
 
     const [EditGroup,setEditGroup] = useState({}) ;                      // selected group for edit !
     const [updatedParticipants,setUpdatedParticipants] = useState([]) ;  // holds the initial and after adding or removing participants of the selected group ! 
@@ -658,36 +779,51 @@ const Dashboard = () => {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   // X-----------------------------WEBRTC-----------------------------------------X
 
-
+  // CALL SOMEONE !
   const handleCall = async () => {
-    // console.log("TO : ",friend_data) ; 
-    // console.log("TO SOCKET ID : ",onlineUsers[friend_data._id]) ; 
-    // console.log("FROM : ",userdetails) ; 
-    // console.log("FROM SOCKET ID : ",onlineUsers[userdetails._id]) ; 
-
     const stream = await navigator.mediaDevices.getUserMedia({video : true, audio : true}) ; 
     setMyStream(stream) ; 
-
     localVideoRef.current.srcObject = stream ; 
-
     peerConnection.current = new RTCPeerConnection({
       iceServers : [{ urls: "stun:stun.l.google.com:19302" }]
     });
-
     stream.getTracks().forEach((track) => peerConnection.current.addTrack(track,stream))
-
     peerConnection.current.onicecandidate = (event) => {
       if(event.candidate) {
         console.log("Sending Ice candidate ro peer : ", event.candidate) ; 
-        socket.emit("ice:candidate", {to : onlineUsers[friend_data._id], candidate : event.candidate}) ; 
+        socket.emit("ice:candidate", {to : onlineUsers[friend_data._id], from: onlineUsers[userdetails._id] ,candidate : event.candidate}) ; 
       }
       else{
         console.log("All ice candidates have been sent !") ; 
       }
     };
-
     peerConnection.current.ontrack = (event) => {
       console.log("Received remote Stream : ", event.streams[0]) ;
       setRemoteStream(event.streams[0]) ; 
@@ -699,28 +835,102 @@ const Dashboard = () => {
         console.log("Remote video red is not set") ; 
       }
     };
-    
     const offer = await peerConnection.current.createOffer() ; 
-    await peerConnection.current.setLocalDescription(offer) ; 
-    socket.emit("user:call", {to : onlineUsers[friend_data._id], from : onlineUsers[userdetails._id], offer}) ; 
-    
-    setInCall(true) ; 
-    setConnectionId(onlineUsers[friend_data._id]) ; 
+    await peerConnection.current.setLocalDescription(offer) ;
+
+    // EMIT THE CALL
+    socket.emit("user:call", {to : onlineUsers[friend_data._id], from : onlineUsers[userdetails._id], offer , callerData : userdetails}) ; 
+    setCalling(true) ; 
+    setFriendDisconnected(false) ; 
+    setIncommingCall(false) ;                 // when sending call make sure this is false
+    setConnectionId(friend_data._id) ;  
+    setIncommingData(friend_data) ;              // user name , image , id
   };
-  // X----------------------------------------------------------------------------X
+  
 
-  useEffect(()=>{
-    console.log("PeerConnection",peerConnection.current) ; 
-  },[peerConnection.current]) ; 
 
-  const endCall = () => {
-    // also emit to destroy peer connection of other user !
-    socket.emit("End:Call", {to:connectionSocketId,from:onlineUsers[userdetails._id]}) ; 
-    setInCall(false) ; 
-    setConnectionId("") ; // empty whenver disconnect
+
+
+  // END CALL
+  const endCall = () => {   // also emit to destroy peer connection of other user !
+    socket.emit("End:Call", {to: onlineUsers[connectionId] ,from:onlineUsers[userdetails._id]}) ;
+    setInCall(false) ;
+    setIncommingCall(false) ;            
+    setIncommingData({}) ;              // user name , image , id
+    setConnectionId("") ; 
+    setFriendDisconnected(true) ; 
     resetCallState() ;
   };
 
+
+  // END CALL BEFORE USER CAN ACCEPT OR REJECT 
+  const endCalling = () => {
+    socket.emit("EndCalling", {to: onlineUsers[connectionId] ,from:onlineUsers[userdetails._id]}) ; 
+    setInCall(false) ;
+    setCalling(false) ;
+    setIncommingCall(false) ;            
+    setIncommingData({}) ;              // user name , image , id
+    setConnectionId("") ; 
+    setFriendDisconnected(true) ; 
+    resetCallState() ;
+  };
+
+
+  // REJECT INCOMMING CALL
+  const RejectCall = () => {
+    socket.emit("reject:incomming", {to: onlineUsers[connectionId], from: onlineUsers[userdetails._id]}) ; 
+    setInCall(false) ;
+    setIncommingCall(false) ;            
+    setIncommingData({}) ;              // user name , image , id
+    setConnectionId("") ; 
+    setFriendDisconnected(true) ; 
+    resetCallState() ;
+  };
+
+
+  // ACCEPT CALL 
+  const AcceptCall = async () => {
+    // SETTING STREAM : 
+    const stream = await navigator.mediaDevices.getUserMedia({video : true , audio : true}) ; 
+    setMyStream(stream) ; 
+    localVideoRef.current.srcObject = stream ; 
+    // PEER CONNECTION 
+    peerConnection.current = new RTCPeerConnection({
+      iceServers : [{ urls : "stun:stun.l.google.com:19302"}]
+    }) ; 
+    // ADD TRACKS TO PEER CONNECTION 
+    stream.getTracks().forEach((track) => peerConnection.current.addTrack(track, stream)) ; 
+    // ICE CANDIDATES : 
+    peerConnection.current.onicecandidate= (event) => {
+      if(event.candidate) {
+        console.log("Sending ICE candidate to peer", event.candidate) ; 
+        socket.emit("ice:candidate", {to : onlineUsers[inCommingData._id] , from : onlineUsers[userdetails._id] ,candidate: event.candidate}) ; 
+      } else {
+        console.log("All Ice candidates have been sent !") ; 
+      }
+    };
+    // REMOTE STREAM 
+    peerConnection.current.ontrack = (event) => {
+      console.log("Received remote stream : ", event.streams[0]) ; 
+      setRemoteStream(event.streams[0]) ; 
+      if(remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = event.streams[0] ; 
+        console.log("Remote video stream attached to <video> element !") ; 
+      } else{ 
+        console.log("Remote video ref is not set !") ; 
+      }
+    }
+    // RECEIVE OFFER FROM CALLER remoteDescription 
+    await peerConnection.current.setRemoteDescription(new RTCSessionDescription(Offer)) ; 
+    // CREATE ANSWER : SET LOCALDESCRIPTION ANSWER :  
+    const answer = await peerConnection.current.createAnswer() ; 
+    await peerConnection.current.setLocalDescription(answer) ; 
+    setInCall(true) ; 
+    setConnectionId(inCommingData._id) ; // makes sure that they are in call
+    setFriendDisconnected(false) ; 
+    // SEND THE ANSWER BACK TO THE CALLER 
+    socket.emit("call:accepted", {to: onlineUsers[inCommingData._id] , answer}) ; 
+  }
 
 
   // END CALL RESET CALL STATE FUNCTION
@@ -741,6 +951,27 @@ const Dashboard = () => {
     }
     setRemoteStream(null);
   };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   return (
     <>
@@ -959,7 +1190,7 @@ const Dashboard = () => {
           <img src={friend_data.image} alt="" />
           <p>{friend_data.name}</p>
           <div className={`status ${onlineUsers[friend_data._id] ? 'online_status' : ''}`}></div>
-          <button className={`${onlineUsers[friend_data._id] && userContacts.some(req => req._id == friend_data._id) && friend_data._id != userdetails._id ? '' : 'display_none'}`} onClick={handleCall} >
+          <button className={`${onlineUsers[friend_data._id] && userContacts.some(req => req._id == friend_data._id) && friend_data._id != userdetails._id ? '' : 'display_none'} ${inCall ? "display_none": ""} ${inCommingCall ? "display_none" : ""} ${Calling ? "display_none": ""}`} onClick={handleCall} >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" className="bi bi-camera-video-fill" viewBox="0 0 16 16">
               <path d="M0 5a2 2 0 0 1 2-2h7.5a2 2 0 0 1 1.983 1.738l3.11-1.382A1 1 0 0 1 16 4.269v7.462a1 1 0 0 1-1.406.913l-3.111-1.382A2 2 0 0 1 9.5 13H2a2 2 0 0 1-2-2z"/>
             </svg>
@@ -1026,16 +1257,34 @@ const Dashboard = () => {
       </div>
       <button onClick={Handle_group_update}>SAVE</button>
     </div>
+    
+    
+
+    <div className={`calling ${Calling ? "" : "display_none" }`}>
+      <h2>Calling : {inCommingData.name}</h2>
+      <img src={inCommingData.image}/>
+      <button onClick={endCalling}>end</button>
+    </div>
+    <div className={`permission ${inCommingCall ? "" : "display_none"}`}>
+      <h2>Incomming call from : {inCommingData.name}</h2>
+      <img src={inCommingData.image}/>
+      <button onClick={()=>{setIncommingCall(false) , AcceptCall()}} >Accept</button>
+      <button onClick={()=>{setIncommingCall(false) , RejectCall()}} >Reject</button>
+    </div>
 
     <div className={`WEBRTC ${inCall ? "" : "display_none"}`} >
-      <h2>Incomming !</h2>
-      <video ref={localVideoRef} autoPlay playsInline style={{ width: "300px" }} className='my_video'/>
-      <video ref={remoteVideoRef} autoPlay playsInline style={{ width: "300px" }} className='friends_video'/> 
-      <button className={`acceptcall ${inCommingCall ? "" : "display_none"} ${inCall ? "display_none" : ""}`}>Accept</button>
+      <div className={`${friendDisconnected ? "display_none" : ""}`}>
+        <h2>In call with : </h2>
+        <img src={inCommingData.image}/>&nbsp;&nbsp;<h3>{inCommingData.name}</h3>
+      </div>
+      <video ref={localVideoRef} autoPlay playsInline style={{ width: "300px" }} className={`my_video`}/>
+      <h2 className={`${friendDisconnected ? "" : "display_none"}`}>NO ONE IN THE CALL PLEASE LEAVE</h2>
+      <button className={`${friendDisconnected ? "" : "display_none"}`} onClick={endCall}>Leave</button>
+      <video ref={remoteVideoRef} autoPlay playsInline style={{ width: "300px" }} className={`friends_video`}/> 
       <button className={`endcall ${peerConnection.current ? "" : "display_none"}`} onClick={endCall}>End</button>
     </div>
     </>
   )
 }
 
-export default Dashboard ;
+export default Dashboard ;        

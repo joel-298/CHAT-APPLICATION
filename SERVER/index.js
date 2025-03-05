@@ -817,13 +817,21 @@ io.on("connection",(socket)=>{
         console.log(`Forwarding Ice candidate from ${data.from} to ${data.to}`) ; 
         io.to(data.to).emit("ice:candidate", {candidate: data.candidate}) ;
     });
-
     // Handle Incoming call 
     socket.on("user:call" , (data)=> {
         console.log(`Call from ${data.from} to ${data.to}`) ; 
-        io.to(data.to).emit("incoming:call", {from : data.from , offer : data.offer}) ;
+        io.to(data.to).emit("incoming:call", {from : data.from , offer : data.offer , callerData : data.callerData}) ;
     });
-
+    // End calling before user accepts or rejects it
+    socket.on("EndCalling", (data) => {
+        console.log("end call ")
+        io.to(data.to).emit("ended:incoming:call",data) ; 
+    });
+    // Reject Incomming call
+    socket.on("reject:incomming",(data)=>{
+        console.log("Rejct incomming call") ; 
+        io.to(data.to).emit("call:rejected",data) ; 
+    });
     // Handke acceptance 
     socket.on("call:accepted", (data) => {
         console.log(`Call accepted by ${data.to}`) ; 
