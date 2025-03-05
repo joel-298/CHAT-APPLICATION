@@ -976,7 +976,7 @@ const Dashboard = () => {
   return (
     <>
     <div className='profile'>
-      <img src={userdetails.image} alt="avatar" onClick={()=>{navigate('/profile')}} />
+      <img src={userdetails.image} alt="avatar"/>
       <p>{userdetails.name}</p>
       <p>
         {userdetails.createdAt

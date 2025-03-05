@@ -37,19 +37,7 @@ const Home = () => {
       <h1>TO ALL THOSE WHO ARE VISITING !</h1>
       <h3>Sorry about the ui im working on the css part !</h3>
       <h3>Apart from that all the other functionalities are working</h3>
-      <h2>List of functionalities :</h2>
-      <ul>
-        <li>Users can connect by sending connection requests</li>
-        <li>Users can send , receive , accept , reject requests of other users</li>
-        <li>Users cannot chat with each other untill they are connected with each other</li>
-        <li>Users can block each other and that blocked person will not be able to find the account of the user who has just blocked him !</li>
-        <li>Also the person who has Blocked another user will now be able to see that blocked users account in search bar or contacts untill and unless he/she unblocks him/her</li>
-        <li>Users can see the connection requests that they have received and also can see the accounts that they have blocked with an option to unblock those accounts</li>
-        <li>can chat in real time using socket.io</li>
-        <li>webrtc for video streaming in real time only possible if both users are online</li>
-        <li>Messages are being stored in db</li>
-        <li>User can create groups , add or remove members of that groups too</li>
-      </ul>
+      
     </div>
   )
 }
