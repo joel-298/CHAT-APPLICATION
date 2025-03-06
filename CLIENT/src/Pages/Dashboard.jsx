@@ -54,10 +54,11 @@ const Dashboard = () => {
       }
       else{
         console.log("User array return false") ;
+        alert("User array return false") ; 
       }
     } catch (error) {
       navigate('/') ;
-      console.log("ERROR WHILE FETCHING USER CONTACTS !") ; 
+      alert("ERROR WHILE FETCHING USER CONTACTS !") ; 
     }
   };
 
@@ -277,7 +278,7 @@ const Dashboard = () => {
         };  
         verifiyToken() ; 
     } catch (error) {
-      console.log("ERROR WHILE FETCHING USER DETAILS !") ;
+      alert("ERROR WHILE FETCHING USER DETAILS !") ;
     }
     return () => {    
       endCall() ;  
