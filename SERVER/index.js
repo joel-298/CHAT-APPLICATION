@@ -29,6 +29,12 @@ app.use('/auth',auth) ;
 app.use('/user',user) ; 
 app.use('/messages',message) ; 
 
+
+app.get("/",(req,res)=>{
+    res.send("HELLO WORLD !") ; 
+})
+
+
 // SEND MESSAGE
 const addMessageToDb = async (data) => {
     const {userdetails , friend_data , message , isGroup ,senderImage} = data ; 
