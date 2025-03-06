@@ -40,7 +40,7 @@ const Dashboard = () => {
   const functionContacts = async (id) => {
     try {
       console.log("User contacts Id",id) ; 
-      const response = await axios.get(`http://localhost:4000/user/contacts`,{withCredentials:true}) ; 
+      const response = await axios.get(`https://chat-application-ke4k.onrender.com/user/contacts`,{withCredentials:true}) ; 
       if(response.data.boolean) {
         setUserContacts(response.data.contacts) ;
         // HERE WE WILL FETCH USER CONTACTS LIKE ABOVE : 
@@ -68,11 +68,11 @@ const Dashboard = () => {
 
   // CONNECT 
   const navigate = useNavigate() ; 
-  const socket = useMemo(()=> io("http://localhost:4000"),[]) ; // setting up the socket server // CHECKPOINT 6
+  const socket = useMemo(()=> io("https://chat-application-ke4k.onrender.com"),[]) ; // setting up the socket server // CHECKPOINT 6
   useEffect(()=>{
     try {
       const verifiyToken = async () => {
-        const response = await axios.get("http://localhost:4000/user/personal" , {withCredentials : true}) ; 
+        const response = await axios.get("https://chat-application-ke4k.onrender.com/user/personal" , {withCredentials : true}) ; 
         if(response.data.boolean) { //  logged in 
           setUserDetails(response.data.user) ; 
           functionContacts(response.data.user._id) ; 
@@ -313,7 +313,7 @@ const Dashboard = () => {
     if (value) {
       searchTimeout = setTimeout(async () => {
         try {
-          const response = await axios.get(`http://localhost:4000/user/search/${value}` , {withCredentials : true});
+          const response = await axios.get(`https://chat-application-ke4k.onrender.com/user/search/${value}` , {withCredentials : true});
           if (value === latestQuery.current) {
             let filteredUsers = response.data.boolean ? response.data.array : [];
 
@@ -347,7 +347,7 @@ const Dashboard = () => {
   // LOGOUT
   const handleLogout = async () => {
     try {
-      const response = await axios.get('http://localhost:4000/auth/logout' , {withCredentials : true}) ; 
+      const response = await axios.get('https://chat-application-ke4k.onrender.com/auth/logout' , {withCredentials : true}) ; 
       if(response.data.boolean) {
         setMySocketId("") ;
         alert(response.data.message) ; 
@@ -412,7 +412,7 @@ const Dashboard = () => {
       try {                                                                   // fetch their chats weather they are online or not ! 
         const fetchChats = async () => {
           console.log(isGroup) ;  
-          const response = await axios.post('http://localhost:4000/messages/get', {user_id : userdetails._id, friend_id : selectedFriend._id , isGroup : isGroup} , {withCredentials : true}) ; 
+          const response = await axios.post('https://chat-application-ke4k.onrender.com/messages/get', {user_id : userdetails._id, friend_id : selectedFriend._id , isGroup : isGroup} , {withCredentials : true}) ; 
           if(response.data.boolean) {
             console.log(response.data.array) ; 
             setChatsArray(response.data.array) ; 
@@ -688,7 +688,7 @@ const Dashboard = () => {
       else{
         try {
           setView({_id:id,name:name,image:image}) ; 
-          const response = await axios.post("http://localhost:4000/user/participants", {selectedGroupId:id} , {withCredentials : true}) ; 
+          const response = await axios.post("https://chat-application-ke4k.onrender.com/user/participants", {selectedGroupId:id} , {withCredentials : true}) ; 
           if(response.data.boolean) {
             setViewParticipants(response.data.obj.participants) ; 
           }
@@ -718,7 +718,7 @@ const Dashboard = () => {
       }
       else{
         try {
-          const response = await axios.post("http://localhost:4000/user/participants", {selectedGroupId:id} , {withCredentials : true}) ; 
+          const response = await axios.post("https://chat-application-ke4k.onrender.com/user/participants", {selectedGroupId:id} , {withCredentials : true}) ; 
           if(response.data.boolean) {
             setEditGroup({id:id,name:name,image:image,admin:admin}) ;
             setUpdatedParticipants(response.data.obj.participants) ; // 1st add initial participants to this array !

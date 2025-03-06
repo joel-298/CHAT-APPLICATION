@@ -7,7 +7,7 @@ const Home = () => {
     useEffect(()=>{
       try {
         const verifiyToken = async () => {
-          const response = await axios.get("http://localhost:4000/auth/verify" , {withCredentials : true}) ; 
+          const response = await axios.get("https://chat-application-ke4k.onrender.com/auth/verify" , {withCredentials : true}) ; 
           if(response.data.boolean) { // already logged 
             navigate('/dashboard') ; 
           }

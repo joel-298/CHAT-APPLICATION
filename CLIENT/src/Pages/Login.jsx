@@ -6,7 +6,7 @@ const Signup = () => {
     useEffect(() => {
         try {
             const verifiyToken = async () => {
-              const response = await axios.get("http://localhost:4000/auth/verify" , {withCredentials : true}) ; 
+              const response = await axios.get("https://chat-application-ke4k.onrender.com/auth/verify" , {withCredentials : true}) ; 
               if(response.data.boolean) { // already logged 
                 navigate('/dashboard') ; 
               }
@@ -34,7 +34,7 @@ const Signup = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await axios.post('http://localhost:4000/auth/login', { email, password } , {withCredentials : true});
+            const response = await axios.post('https://chat-application-ke4k.onrender.com/auth/login', { email, password } , {withCredentials : true});
             if(response.data.boolean) {
                 // cookie already created and stored in browser !
                 alert(response.data.message) ; 
