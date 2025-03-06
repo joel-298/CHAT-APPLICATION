@@ -474,7 +474,8 @@ const server = createServer(app) ;
 const io = new Server(server,{
     cors : {
         origin: "https://chat-application-beta-tan-81.vercel.app/" ,
-        methods : ["GET","POST","PUT","PATCH","DELETE"]
+        methods : ["GET","POST","PUT","PATCH","DELETE"],
+        credentials : true,
     }
 });
 const userSocketMap = {} // {userId,socketId} 
