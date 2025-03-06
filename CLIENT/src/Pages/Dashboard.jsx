@@ -70,8 +70,8 @@ const Dashboard = () => {
   // CONNECT 
   const navigate = useNavigate() ; 
   const socket = useMemo(()=> io("wss://chat-application-ke4k.onrender.com", {
-    transports: ["websocket"], // Ensure WebSocket transport
-    withCredentials: true, // If required
+    transports: ["websocket", "polling"], // Allow both WebSocket and polling
+    // withCredentials: true,
   }),[]) ; // setting up the socket server // CHECKPOINT 6
   useEffect(()=>{
     try {
@@ -284,8 +284,8 @@ const Dashboard = () => {
       alert("ERROR WHILE FETCHING USER DETAILS !") ;
     }
     return () => {    
-      endCall() ;  
-      endCalling() ; 
+      // endCall() ;  
+      // endCalling() ; 
       socket.disconnect() ; 
       setMySocketId("") ; 
     }
