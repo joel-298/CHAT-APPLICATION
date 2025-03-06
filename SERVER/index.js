@@ -22,7 +22,8 @@ app.use(express.json()) ;
 app.use(cookieParser()) ;
 app.use(cors({
     origin : 'https://chat-application-beta-tan-81.vercel.app/',
-    credentials : true
+    credentials : true,
+    methods: ["GET", "POST"],
 })) ;
 app.use('/auth',auth) ; 
 app.use('/user',user) ; 
