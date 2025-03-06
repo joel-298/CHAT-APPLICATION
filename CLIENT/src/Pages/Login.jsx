@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
-const Signup = () => {
+const Login = () => {
     useEffect(() => {
         try {
             const verifiyToken = async () => {
@@ -64,4 +64,4 @@ const Signup = () => {
     );
 };
 
-export default Signup;
+export default Login;
