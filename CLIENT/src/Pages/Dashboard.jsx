@@ -69,7 +69,7 @@ const Dashboard = () => {
 
   // CONNECT 
   const navigate = useNavigate() ; 
-  const socket = useMemo(()=> io("https://chat-application-ke4k.onrender.com", {
+  const socket = useMemo(()=> io("wss://chat-application-ke4k.onrender.com", {
     transports: ["websocket"], // Ensure WebSocket transport
     withCredentials: true, // If required
   }),[]) ; // setting up the socket server // CHECKPOINT 6
