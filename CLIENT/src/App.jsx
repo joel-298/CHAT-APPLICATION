@@ -5,6 +5,7 @@ import Home from "./Pages/Home";
 import Signup from "./Pages/Signup";
 import Login from "./Pages/Login";
 import Dashboard from "./Pages/Dashboard";
+import NotFound from "./Pages/NotFound";
 // import Profile from "./Pages/Profile";
 
 function App() {
@@ -14,6 +15,7 @@ function App() {
       <Route path="/signup" element={<Signup />} />
       <Route path="/login" element={<Login />} /> 
       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/*" element={<NotFound/>} />
     </Routes>
   );
 }
