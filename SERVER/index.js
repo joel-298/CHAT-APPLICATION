@@ -473,7 +473,7 @@ const AddOrRemoveMembers = async ({GroupId, updatedParticipants, members}) => { 
 const server = createServer(app) ; 
 const io = new Server(server,{
     cors : {
-        origin: "*" ,
+        origin: "https://chat-application-beta-tan-81.vercel.app/" ,
         methods : ["GET","POST","PUT","PATCH","DELETE"]
     }
 });
