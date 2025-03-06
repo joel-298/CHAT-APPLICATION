@@ -476,6 +476,7 @@ const io = new Server(server,{
         origin: "https://chat-application-beta-tan-81.vercel.app" ,
         methods : ["GET","POST","PUT","PATCH","DELETE"],
         credentials : true,
+        transports: ["websocket"], 
     }
 });
 const userSocketMap = {} // {userId,socketId} 
