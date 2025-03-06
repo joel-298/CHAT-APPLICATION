@@ -51,7 +51,7 @@ auth.post('/login', async (req,res) => {
             // create cookie
             res.cookie('authToken',token ,{
                 httpOnly : true , 
-                secure : false , // true if hosting
+                secure : true , // true if hosting
                 sameSite : 'strict' , 
                 // SESSION COOKIE !
             }).json({boolean : true , message : "Login Successful !" }) ; 
