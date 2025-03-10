@@ -52,7 +52,7 @@ auth.post('/login', async (req,res) => {
             res.cookie('authToken',token ,{
                 httpOnly : true , 
                 secure : true , // true if hosting
-                sameSite : 'strict' , 
+                sameSite : 'None' , 
                 // SESSION COOKIE !
             }).json({boolean : true , message : "Login Successful !" }) ; 
             return ;
