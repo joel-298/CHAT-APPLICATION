@@ -68,7 +68,8 @@ auth.post('/login', async (req,res) => {
 
 // LOGOUT
 auth.get('/logout', (req,res)=> {
-    res.clearCookie('authToken', {httpOnly : true}) ; 
+    res.clearCookie('authToken', {httpOnly : true ,                 secure : true , // true if hosting
+        sameSite : 'None' }) ; 
     res.json({boolean: true , message : "Logged out successfully !"}) ; 
 });
 
