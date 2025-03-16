@@ -1,0 +1,8 @@
+Authentication Issue : If you are not being able to login into your account or create your new account then u have to 1st allow "third-party cookies" in your web browser ! 
+REASON : Since my BACKEND and FRONTEND are hosted in different domains (Verce and Render)
+SOLUTION : 
+    Use a proxy to make cookies first-party.
+    Switch to token-based authentication without cookies.
+    Use a custom domain for both frontend and backend.
+
+    The easiest and most secure solution is to use token-based authentication with the Authorization header, as it avoids cookies altogether and works seamlessly across different domains.

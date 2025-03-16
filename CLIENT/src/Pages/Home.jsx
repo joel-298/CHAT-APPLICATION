@@ -37,8 +37,8 @@ const Home = () => {
       <h1>TO ALL THOSE WHO ARE VISITING !</h1>
       <h3>Sorry about the ui im working on the css part !</h3>
       <h3>Apart from that all the other functionalities are working</h3>
-      <h3>THERE'S BEEN SOME ISSUE IN DEPLOYMENT AND I'M TRYING TO FIX IT !</h3>
-      <h3> BUT THIS PROJECT IS CORRECTLY WORKING ON LOCALHOST !</h3>
+      <h3>If u face any login or Signup Issues Try allowing "third-party cookies"</h3>
+      <h3>IM WORKING ON THE DEPLOYMENT ISSUE OF VIDEO CALLING (However, its working correctly on localhost)</h3>
     </div>
   )
 }
