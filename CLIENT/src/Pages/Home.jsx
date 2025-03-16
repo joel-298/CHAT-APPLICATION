@@ -38,7 +38,13 @@ const Home = () => {
       <h3>Sorry about the ui im working on the css part !</h3>
       <h3>Apart from that all the other functionalities are working</h3>
       <h3>If u face any login or Signup Issues Try allowing "third-party cookies"</h3>
-      <h3>IM WORKING ON THE DEPLOYMENT ISSUE OF VIDEO CALLING (However, its working correctly on localhost)</h3>
+
+      <br /><br />
+      <h3>PROBLEM : I'm currently facing a deployment issue with the video calling feature. It works fine when both users are on the same WiFi/network but does not function correctly when they are on different networks.</h3>
+      <h3>REASON :The issue is due to the absence of a TURN server.</h3>
+      <h3>EXPLANATION : STUN (Session Traversal Utilities for NAT) servers help discover the public IP of a device but fail when both peers are behind symmetric NATs or strict firewalls.
+                        TURN servers act as a relay to ensure connectivity in these cases.
+      </h3>
     </div>
   )
 }
