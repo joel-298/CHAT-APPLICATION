@@ -816,7 +816,14 @@ const Dashboard = () => {
     setMyStream(stream) ; 
     localVideoRef.current.srcObject = stream ; 
     peerConnection.current = new RTCPeerConnection({
-      iceServers : [{ urls: "stun:stun.l.google.com:19302" }]
+      iceServers : [
+        { urls: "stun:stun.l.google.com:19302" }, // STUN SERVER 
+        {                                         // TURN SERVER
+          urls: "turn:18.209.47.41:3478", // TURN server
+          username: "chatZturn", // TURN server username (if required)
+          credential: "chatZturnServer" // TURN server credential (if required)
+        }
+      ]
     });
     stream.getTracks().forEach((track) => peerConnection.current.addTrack(track,stream))
     peerConnection.current.onicecandidate = (event) => {
@@ -900,7 +907,14 @@ const Dashboard = () => {
     localVideoRef.current.srcObject = stream ; 
     // PEER CONNECTION 
     peerConnection.current = new RTCPeerConnection({
-      iceServers : [{ urls : "stun:stun.l.google.com:19302"}]
+      iceServers : [
+        { urls: "stun:stun.l.google.com:19302" }, // STUN SERVER 
+        {                                         // TURN SERVER
+          urls: "turn:18.209.47.41:3478", // TURN server
+          username: "chatZturn", // TURN server username (if required)
+          credential: "chatZturnServer" // TURN server credential (if required)
+        }
+      ]
     }) ; 
     // ADD TRACKS TO PEER CONNECTION 
     stream.getTracks().forEach((track) => peerConnection.current.addTrack(track, stream)) ; 
