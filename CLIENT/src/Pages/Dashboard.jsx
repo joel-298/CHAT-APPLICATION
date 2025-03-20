@@ -823,7 +823,8 @@ const Dashboard = () => {
           username: "chatZturn", // TURN server username (if required)
           credential: "chatZturnServer" // TURN server credential (if required)
         }
-      ]
+      ],
+      iceTransportPolicy: "relay"
     });
     stream.getTracks().forEach((track) => peerConnection.current.addTrack(track,stream))
     peerConnection.current.onicecandidate = (event) => {
@@ -914,7 +915,8 @@ const Dashboard = () => {
           username: "chatZturn", // TURN server username (if required)
           credential: "chatZturnServer" // TURN server credential (if required)
         }
-      ]
+      ],
+      iceTransportPolicy: "relay"
     }) ; 
     // ADD TRACKS TO PEER CONNECTION 
     stream.getTracks().forEach((track) => peerConnection.current.addTrack(track, stream)) ; 
