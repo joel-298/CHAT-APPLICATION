@@ -819,7 +819,7 @@ const Dashboard = () => {
       iceServers : [
         { urls: "stun:stun.l.google.com:19302" }, // STUN SERVER 
         {                                         // TURN SERVER
-          urls: "turn:18.209.47.41:3478", // TURN server
+          urls: "turn:54.173.39.7:3478", // TURN server
           username: "chatZturn", // TURN server username (if required)
           credential: "chatZturnServer" // TURN server credential (if required)
         }
@@ -911,7 +911,7 @@ const Dashboard = () => {
       iceServers : [
         { urls: "stun:stun.l.google.com:19302" }, // STUN SERVER 
         {                                         // TURN SERVER
-          urls: "turn:18.209.47.41:3478", // TURN server
+          urls: "turn:54.173.39.7:3478", // TURN server
           username: "chatZturn", // TURN server username (if required)
           credential: "chatZturnServer" // TURN server credential (if required)
         }
