@@ -819,9 +819,12 @@ const Dashboard = () => {
       iceServers : [
         { urls: "stun:stun.l.google.com:19302" }, // STUN SERVER 
         {                                         // TURN SERVER
-          urls: "turn:54.173.39.7:3478", // TURN server
-          username: "chatZturn", // TURN server username (if required)
-          credential: "chatZturnServer" // TURN server credential (if required)
+          // urls: "turn:54.173.39.7:3478", // TURN server
+          // username: "chatZturn", // TURN server username (if required)
+          // credential: "chatZturnServer" // TURN server credential (if required)
+          urls: "turn:54.173.39.7:3478",
+          username: "test",  // Not needed when using static-auth-secret
+          credential: "your_generated_secret",
         }
       ],
       iceTransportPolicy: "all"
@@ -911,9 +914,9 @@ const Dashboard = () => {
       iceServers : [
         { urls: "stun:stun.l.google.com:19302" }, // STUN SERVER 
         {                                         // TURN SERVER
-          urls: "turn:54.173.39.7:3478", // TURN server
-          username: "chatZturn", // TURN server username (if required)
-          credential: "chatZturnServer" // TURN server credential (if required)
+          urls: "turn:54.173.39.7:3478",
+          username: "test",  // Not needed when using static-auth-secret
+          credential: "your_generated_secret",
         }
       ],
       iceTransportPolicy: "all"
