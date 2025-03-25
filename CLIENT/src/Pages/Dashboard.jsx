@@ -814,7 +814,7 @@ const Dashboard = () => {
   const handleCall = async () => {
     try {
       const getIceCandidates = async () => {
-        const response = await axios.post("https://chat-application-ke4k.onrender.com/messages/get-ice-candidates", {withCredentials : true}) ; 
+        const response = await axios.get("https://chat-application-ke4k.onrender.com/messages/get-ice-candidates", {withCredentials : true}) ; 
         if(response.data.boolean) {
           const stream = await navigator.mediaDevices.getUserMedia({video : true, audio : true}) ; 
           setMyStream(stream) ; 
@@ -911,7 +911,7 @@ const Dashboard = () => {
   const AcceptCall = async () => {
     try {
       const getIceCandidates = async () => {
-        const response = await axios.post("https://chat-application-ke4k.onrender.com/messages/get-ice-candidates", {withCredentials : true}) ; 
+        const response = await axios.get("https://chat-application-ke4k.onrender.com/messages/get-ice-candidates", {withCredentials : true}) ; 
         if(response.data.boolean) {
           // SETTING STREAM : 
           const stream = await navigator.mediaDevices.getUserMedia({video : true , audio : true}) ; 
