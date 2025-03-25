@@ -819,6 +819,7 @@ const Dashboard = () => {
           const stream = await navigator.mediaDevices.getUserMedia({video : true, audio : true}) ; 
           setMyStream(stream) ; 
           localVideoRef.current.srcObject = stream ; 
+          console.log("ICE CANDIDATES : ", response.data.ICE_CANDIDATES) ; 
           peerConnection.current = new RTCPeerConnection({
             iceServers : response.data.ICE_CANDIDATES
           });
