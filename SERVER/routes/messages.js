@@ -4,6 +4,7 @@ const chatModel = require("../models/chatsModel");
 const messageModel = require("../models/messageModel");
 const groupModel = require("../models/groupModel");
 const message = express.Router() ; 
+const twilio = require("twilio") ; 
 
 
 
@@ -59,5 +60,19 @@ message.post("/get", protectedRoute ,async (req,res)=>{ // PROTECTED ROUTE ELSE 
 // HERE I HAVE WRITTEN TRUE BECAUSE IN FRONTEND IF BOOLEAN VALUE OF RESPONSE == FALSE i.e not authorized because of the 
 // possibility of protected route returning false heretherefore return to home page
 
+
+message.get("get-ice-candidates", async (req,res) => {
+    try {
+        const accountSid = process.env.TWILIO_ACCOUNT_SID;
+        const authToken = process.env.TWILIO_AUTH_TOKEN;
+        const client = twilio(accountSid, authToken);
+        const token = await client.tokens.create();
+        console.log(token.accountSid);
+        res.json({boolean : true , ICE_CANDIDATES : token.accountSid}) ; 
+    } catch (error) {
+        console.log("Error while fetching ice candidates : Server error !", error); 
+        res.json({boolean : false , message : "Internal Server while fetching ice candidates"}) ; 
+    }
+}) ; 
 
 module.exports = message ; 

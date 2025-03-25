@@ -812,51 +812,58 @@ const Dashboard = () => {
 
   // CALL SOMEONE !
   const handleCall = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({video : true, audio : true}) ; 
-    setMyStream(stream) ; 
-    localVideoRef.current.srcObject = stream ; 
-    peerConnection.current = new RTCPeerConnection({
-      iceServers : [
-        { urls: "stun:stun.l.google.com:19302" }, // STUN SERVER 
-        {                                         // TURN SERVER
-          urls: "turn:54.173.39.7:3478", // TURN server
-          username: "chatZturn", // TURN server username (if required)
-          credential: "chatZturnServer" // TURN server credential (if required)
+    try {
+      const getIceCandidates = async () => {
+        const response = await axios.get("https://chat-application-ke4k.onrender.com/messages/get-ice-candidates", {withCredentials : true}) ; 
+        if(response.data.boolean) {
+          const stream = await navigator.mediaDevices.getUserMedia({video : true, audio : true}) ; 
+          setMyStream(stream) ; 
+          localVideoRef.current.srcObject = stream ; 
+          peerConnection.current = new RTCPeerConnection({
+            iceServers : response.data.ICE_CANDIDATES
+          });
+          stream.getTracks().forEach((track) => peerConnection.current.addTrack(track,stream))
+          peerConnection.current.onicecandidate = (event) => {
+            if(event.candidate) {
+              console.log("Sending Ice candidate ro peer : ", event.candidate) ; 
+              socket.emit("ice:candidate", {to : onlineUsers[friend_data._id], from: onlineUsers[userdetails._id] ,candidate : event.candidate}) ; 
+            }
+            else{
+              console.log("All ice candidates have been sent !") ; 
+            }
+          };
+          peerConnection.current.ontrack = (event) => {
+            console.log("Received remote Stream : ", event.streams[0]) ;
+            setRemoteStream(event.streams[0]) ; 
+            if(remoteVideoRef.current) {
+              remoteVideoRef.current.srcObject = event.streams[0] ; 
+              console.log("Remote Video Stream attached to <video> element") ; 
+            }
+            else{
+              console.log("Remote video red is not set") ; 
+            }
+          };
+          const offer = await peerConnection.current.createOffer() ; 
+          await peerConnection.current.setLocalDescription(offer) ;
+      
+          // EMIT THE CALL
+          socket.emit("user:call", {to : onlineUsers[friend_data._id], from : onlineUsers[userdetails._id], offer , callerData : userdetails}) ; 
+          setCalling(true) ; 
+          setFriendDisconnected(false) ; 
+          setIncommingCall(false) ;                 // when sending call make sure this is false
+          setConnectionId(friend_data._id) ;  
+          setIncommingData(friend_data) ;              // user name , image , id
         }
-      ],
-      iceTransportPolicy: "all"
-    });
-    stream.getTracks().forEach((track) => peerConnection.current.addTrack(track,stream))
-    peerConnection.current.onicecandidate = (event) => {
-      if(event.candidate) {
-        console.log("Sending Ice candidate ro peer : ", event.candidate) ; 
-        socket.emit("ice:candidate", {to : onlineUsers[friend_data._id], from: onlineUsers[userdetails._id] ,candidate : event.candidate}) ; 
+        else{
+          console.log(response.data.message) ; 
+          alert("Couldn't accept call : server side") ; 
+        }
       }
-      else{
-        console.log("All ice candidates have been sent !") ; 
-      }
-    };
-    peerConnection.current.ontrack = (event) => {
-      console.log("Received remote Stream : ", event.streams[0]) ;
-      setRemoteStream(event.streams[0]) ; 
-      if(remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = event.streams[0] ; 
-        console.log("Remote Video Stream attached to <video> element") ; 
-      }
-      else{
-        console.log("Remote video red is not set") ; 
-      }
-    };
-    const offer = await peerConnection.current.createOffer() ; 
-    await peerConnection.current.setLocalDescription(offer) ;
-
-    // EMIT THE CALL
-    socket.emit("user:call", {to : onlineUsers[friend_data._id], from : onlineUsers[userdetails._id], offer , callerData : userdetails}) ; 
-    setCalling(true) ; 
-    setFriendDisconnected(false) ; 
-    setIncommingCall(false) ;                 // when sending call make sure this is false
-    setConnectionId(friend_data._id) ;  
-    setIncommingData(friend_data) ;              // user name , image , id
+      getIceCandidates() ; 
+    } catch (error) {
+      console.log("Error while fetching ice candidates : client",error) ; 
+      alert("Couldn't accept call : client side") ;
+    }
   };
   
 
@@ -902,54 +909,61 @@ const Dashboard = () => {
 
   // ACCEPT CALL 
   const AcceptCall = async () => {
-    // SETTING STREAM : 
-    const stream = await navigator.mediaDevices.getUserMedia({video : true , audio : true}) ; 
-    setMyStream(stream) ; 
-    localVideoRef.current.srcObject = stream ; 
-    // PEER CONNECTION 
-    peerConnection.current = new RTCPeerConnection({
-      iceServers : [
-        { urls: "stun:stun.l.google.com:19302" }, // STUN SERVER 
-        {                                         // TURN SERVER
-          urls: "turn:54.173.39.7:3478",
-          username: "chatZturn",  
-          credential: "chatZturnServer",
+    try {
+      const getIceCandidates = async () => {
+        const response = await axios.get("https://chat-application-ke4k.onrender.com/messages/get-ice-candidates", {withCredentials : true}) ; 
+        if(response.data.boolean) {
+          // SETTING STREAM : 
+          const stream = await navigator.mediaDevices.getUserMedia({video : true , audio : true}) ; 
+          setMyStream(stream) ; 
+          localVideoRef.current.srcObject = stream ; 
+          // PEER CONNECTION 
+          peerConnection.current = new RTCPeerConnection({
+            iceServers : response.data.ICE_CANDIDATES
+          }) ; 
+          // ADD TRACKS TO PEER CONNECTION 
+          stream.getTracks().forEach((track) => peerConnection.current.addTrack(track, stream)) ; 
+          // ICE CANDIDATES : 
+          peerConnection.current.onicecandidate= (event) => {
+            if(event.candidate) {
+              console.log("Sending ICE candidate to peer", event.candidate) ; 
+              socket.emit("ice:candidate", {to : onlineUsers[inCommingData._id] , from : onlineUsers[userdetails._id] ,candidate: event.candidate}) ; 
+            } else {
+              console.log("All Ice candidates have been sent !") ; 
+            }
+          };
+          // REMOTE STREAM 
+          peerConnection.current.ontrack = (event) => {
+            console.log("Received remote stream : ", event.streams[0]) ; 
+            setRemoteStream(event.streams[0]) ; 
+            if(remoteVideoRef.current) {
+              remoteVideoRef.current.srcObject = event.streams[0] ; 
+              console.log("Remote video stream attached to <video> element !") ; 
+            } else{ 
+              console.log("Remote video ref is not set !") ; 
+            }
+          }
+          // RECEIVE OFFER FROM CALLER remoteDescription 
+          await peerConnection.current.setRemoteDescription(new RTCSessionDescription(Offer)) ; 
+          // CREATE ANSWER : SET LOCALDESCRIPTION ANSWER :  
+          const answer = await peerConnection.current.createAnswer() ; 
+          await peerConnection.current.setLocalDescription(answer) ; 
+          setInCall(true) ; 
+          setConnectionId(inCommingData._id) ; // makes sure that they are in call
+          setFriendDisconnected(false) ; 
+          // SEND THE ANSWER BACK TO THE CALLER 
+          socket.emit("call:accepted", {to: onlineUsers[inCommingData._id] , answer}) ; 
         }
-      ],
-      iceTransportPolicy: "all"
-    }) ; 
-    // ADD TRACKS TO PEER CONNECTION 
-    stream.getTracks().forEach((track) => peerConnection.current.addTrack(track, stream)) ; 
-    // ICE CANDIDATES : 
-    peerConnection.current.onicecandidate= (event) => {
-      if(event.candidate) {
-        console.log("Sending ICE candidate to peer", event.candidate) ; 
-        socket.emit("ice:candidate", {to : onlineUsers[inCommingData._id] , from : onlineUsers[userdetails._id] ,candidate: event.candidate}) ; 
-      } else {
-        console.log("All Ice candidates have been sent !") ; 
+        else{
+          console.log(response.data.message) ; 
+          alert("Couldn't accept call : server side") ; 
+        }
       }
-    };
-    // REMOTE STREAM 
-    peerConnection.current.ontrack = (event) => {
-      console.log("Received remote stream : ", event.streams[0]) ; 
-      setRemoteStream(event.streams[0]) ; 
-      if(remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = event.streams[0] ; 
-        console.log("Remote video stream attached to <video> element !") ; 
-      } else{ 
-        console.log("Remote video ref is not set !") ; 
-      }
+      getIceCandidates() ; 
+    } catch (error) {
+      console.log("Error while fetching ice candidates : client",error) ; 
+      alert("Couldn't accept call : client side") ;
     }
-    // RECEIVE OFFER FROM CALLER remoteDescription 
-    await peerConnection.current.setRemoteDescription(new RTCSessionDescription(Offer)) ; 
-    // CREATE ANSWER : SET LOCALDESCRIPTION ANSWER :  
-    const answer = await peerConnection.current.createAnswer() ; 
-    await peerConnection.current.setLocalDescription(answer) ; 
-    setInCall(true) ; 
-    setConnectionId(inCommingData._id) ; // makes sure that they are in call
-    setFriendDisconnected(false) ; 
-    // SEND THE ANSWER BACK TO THE CALLER 
-    socket.emit("call:accepted", {to: onlineUsers[inCommingData._id] , answer}) ; 
   }
 
 
