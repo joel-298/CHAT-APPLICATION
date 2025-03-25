@@ -61,7 +61,7 @@ message.post("/get", protectedRoute ,async (req,res)=>{ // PROTECTED ROUTE ELSE 
 // possibility of protected route returning false heretherefore return to home page
 
 
-message.get("get-ice-candidates", async (req,res) => {
+message.post("get-ice-candidates", async (req,res) => {
     try {
         const accountSid = process.env.TWILIO_ACCOUNT_SID;
         const authToken = process.env.TWILIO_AUTH_TOKEN;
