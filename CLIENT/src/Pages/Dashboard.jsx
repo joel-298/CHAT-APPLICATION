@@ -820,7 +820,8 @@ const Dashboard = () => {
           setMyStream(stream) ; 
           localVideoRef.current.srcObject = stream ; 
           console.log("ICE CANDIDATES : ", response.data.ICE_CANDIDATES) ; 
-          peerConnection.current = new RTCPeerConnection(response.data.ICE_CANDIDATES);
+          const iceServers = response.data.ICE_CANDIDATES.ice_servers; // Extract only ice_servers
+          peerConnection.current = new RTCPeerConnection({ iceServers });          
           stream.getTracks().forEach((track) => peerConnection.current.addTrack(track,stream))
           peerConnection.current.onicecandidate = (event) => {
             if(event.candidate) {
@@ -917,7 +918,8 @@ const Dashboard = () => {
           setMyStream(stream) ; 
           localVideoRef.current.srcObject = stream ; 
           // PEER CONNECTION 
-          peerConnection.current = new RTCPeerConnection(response.data.ICE_CANDIDATES);
+          const iceServers = response.data.ICE_CANDIDATES.ice_servers; // Extract only ice_servers
+          peerConnection.current = new RTCPeerConnection({ iceServers });          
           // ADD TRACKS TO PEER CONNECTION 
           stream.getTracks().forEach((track) => peerConnection.current.addTrack(track, stream)) ; 
           // ICE CANDIDATES : 
