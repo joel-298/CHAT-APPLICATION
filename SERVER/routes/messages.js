@@ -67,8 +67,8 @@ message.get("/get-ice-candidates", async (req,res) => {
         const authToken = process.env.TWILIO_AUTH_TOKEN;
         const client = twilio(accountSid, authToken);
         const token = await client.tokens.create();
-        console.log(token.accountSid);
-        res.json({boolean : true , ICE_CANDIDATES : token.accountSid}) ; 
+        console.log(token);
+        res.json({boolean : true , ICE_CANDIDATES : token}) ; 
     } catch (error) {
         console.log("Error while fetching ice candidates : Server error !", error); 
         res.json({boolean : false , message : "Internal Server while fetching ice candidates"}) ; 
