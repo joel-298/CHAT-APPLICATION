@@ -818,17 +818,13 @@ const Dashboard = () => {
           console.log("ICE CANDIDATES : ", response.data.ICE_CANDIDATES) ; 
           peerConnection.current = new RTCPeerConnection({ 
             iceServers: [
-              {
-                urls: [
-                  "stun:stun.l.google.com:19302",
-                  "turn:100.26.190.131:3478?transport=udp",
-                  "turn:100.26.190.131:3478?transport=tcp",
-                  "turns:100.26.190.131:5349?transport=tcp"
-                ],
-                username:"userchatZ",
-                credential: "chatZpassword"
-              },
-            ],
+              { urls: "stun:stun.l.google.com:19302" }, // STUN server
+              { 
+                  urls: "turn:100.26.190.131:3478",  // TURN server
+                  username: "chatZ", 
+                  credential: "chatZpassword"
+              }
+            ]
           });          
           stream.getTracks().forEach((track) => peerConnection.current.addTrack(track,stream))
           peerConnection.current.onicecandidate = (event) => {
@@ -911,20 +907,16 @@ const Dashboard = () => {
     setMyStream(stream) ; 
     localVideoRef.current.srcObject = stream ; 
     // PEER CONNECTION 
-    peerConnection.current = new RTCPeerConnection({ 
+    peerConnection.current = new RTCPeerConnection({
       iceServers: [
-        {
-          urls: [
-            "stun:stun.l.google.com:19302",
-            "turn:100.26.190.131:3478?transport=udp",
-            "turn:100.26.190.131:3478?transport=tcp",
-            "turns:100.26.190.131:5349?transport=tcp"
-          ],
-          username:"userchatZ",
-          credential: "chatZpassword"
-        },
-      ],
-    });             
+          { urls: "stun:stun.l.google.com:19302" }, // STUN server
+          { 
+              urls: "turn:100.26.190.131:3478",  // TURN server
+              username: "chatZ", 
+              credential: "chatZpassword"
+          }
+      ]
+  });             
     // ADD TRACKS TO PEER CONNECTION 
     stream.getTracks().forEach((track) => peerConnection.current.addTrack(track, stream)) ; 
     // ICE CANDIDATES : 
