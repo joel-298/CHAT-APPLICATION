@@ -21,7 +21,8 @@ app.use(express.urlencoded({extended:false})) ;
 app.use(express.json()) ; 
 app.use(cookieParser()) ;
 app.use(cors({
-    origin: 'https://chat-application-beta-tan-81.vercel.app',
+    // origin: 'https://chat-application-beta-tan-81.vercel.app',
+    origin : "https://chat-application-7j2zq77fl-joel-matthews-projects-0365ab11.vercel.app" , 
     credentials: true,
     methods: ["GET", "POST"],
 })) ;
@@ -479,7 +480,8 @@ const AddOrRemoveMembers = async ({GroupId, updatedParticipants, members}) => { 
 const server = createServer(app) ; 
 const io = new Server(server,{
     cors : {
-        origin: "https://chat-application-beta-tan-81.vercel.app",
+        // origin: "https://chat-application-beta-tan-81.vercel.app",
+        origin : "https://chat-application-7j2zq77fl-joel-matthews-projects-0365ab11.vercel.app",
         methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
         credentials: true,
         transports: ["websocket"],
