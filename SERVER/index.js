@@ -21,10 +21,15 @@ app.use(express.urlencoded({extended:false})) ;
 app.use(express.json()) ; 
 app.use(cookieParser()) ;
 app.use(cors({
+    // origin: 'https://chat-application-beta-tan-81.vercel.app',
+    // // origin : "https://chat-application-7j2zq77fl-joel-matthews-projects-0365ab11.vercel.app" , 
+    // credentials: true,
+    // methods: ["GET", "POST"],
+
     origin: 'https://chat-application-beta-tan-81.vercel.app',
-    // origin : "https://chat-application-7j2zq77fl-joel-matthews-projects-0365ab11.vercel.app" , 
     credentials: true,
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
 })) ;
 app.use('/auth',auth) ; 
 app.use('/user',user) ; 
